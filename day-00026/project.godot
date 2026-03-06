@@ -12,3 +12,5 @@ config/features=PackedStringArray("4.3")
 
 [autoload]
 
+Api="*res://api.gd"
+

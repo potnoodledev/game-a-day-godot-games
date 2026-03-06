@@ -40,6 +40,8 @@ var hit_effects: Array = []
 var damage_numbers: Array = []
 var screen_shake := 0.0
 
+var _score_submitted := false
+
 func _ready():
 	# Camera - isometric-ish view
 	camera = Camera3D.new()
@@ -143,15 +145,15 @@ func _build_player():
 	player_mesh.set_surface_override_material(0, mat)
 	add_child(player_mesh)
 	
-	# Fists
+	# Fists (positive Z = toward camera = visual "front")
 	var fist_l = _make_fist(Color(0.9, 0.7, 0.5))
 	fist_l.name = "FistL"
-	fist_l.position = Vector3(-0.5, 0.6, -0.3)
+	fist_l.position = Vector3(-0.5, 0.6, 0.3)
 	player_mesh.add_child(fist_l)
-	
+
 	var fist_r = _make_fist(Color(0.9, 0.7, 0.5))
 	fist_r.name = "FistR"
-	fist_r.position = Vector3(0.5, 0.6, -0.3)
+	fist_r.position = Vector3(0.5, 0.6, 0.3)
 	player_mesh.add_child(fist_r)
 
 func _make_fist(color: Color) -> MeshInstance3D:
@@ -299,14 +301,12 @@ func _process(delta):
 			fist_node = player_mesh.get_node("FistR")
 		else:
 			fist_node = player_mesh.get_node("FistL")
-		# Animate fist forward
-		var base_pos = fist_node.position
-		var dir_flat = Vector2(player_attack_dir.x, player_attack_dir.z).normalized()
-		fist_node.position.z = -0.3 - fist_extend
+		# Animate fist forward (+Z = toward camera = visual front)
+		fist_node.position.z = 0.3 + fist_extend
 	else:
 		# Reset fist positions
-		player_mesh.get_node("FistL").position = Vector3(-0.5, 0.6, -0.3)
-		player_mesh.get_node("FistR").position = Vector3(0.5, 0.6, -0.3)
+		player_mesh.get_node("FistL").position = Vector3(-0.5, 0.6, 0.3)
+		player_mesh.get_node("FistR").position = Vector3(0.5, 0.6, 0.3)
 	
 	# Player invulnerability
 	if player_invuln > 0:
@@ -329,9 +329,9 @@ func _process(delta):
 			if player_pos.length() > arena_radius - 1.0:
 				player_pos = player_pos.normalized() * (arena_radius - 1.0)
 			player_target_pos = player_pos + move_dir.normalized() * max(0, move_dir.length() - move_speed)
-		# Face direction of movement or attack
+		# Face direction of movement
 		if move_dir.length() > 0.2:
-			var look_angle = atan2(move_dir.x, move_dir.z)
+			var look_angle = atan2(-move_dir.x, -move_dir.z)
 			player_mesh.rotation.y = lerp_angle(player_mesh.rotation.y, look_angle, delta * 10.0)
 	
 	player_mesh.position = Vector3(player_pos.x, 0.7, player_pos.z)
@@ -370,7 +370,7 @@ func _process(delta):
 				_enemy_attack(enemy)
 		
 		# Face player
-		var look_angle = atan2(to_player.x, to_player.z)
+		var look_angle = atan2(-to_player.x, -to_player.z)
 		enemy.mesh.position = Vector3(enemy.pos.x, 0.7, enemy.pos.z)
 		enemy.mesh.rotation.y = look_angle
 		
@@ -451,6 +451,7 @@ func _enemy_attack(enemy: Dictionary):
 			game_state = 2
 			screen_shake = 3.0
 			hud.show_game_over(points, wave)
+			_submit_and_save()
 
 func player_attack(direction: Vector3):
 	if player_attack_timer > 0 or player_stun > 0:
@@ -459,9 +460,9 @@ func player_attack(direction: Vector3):
 	player_attack_timer = 0.3
 	player_attack_dir = direction
 	
-	# Face attack direction
+	# Face attack direction (negate so fists face toward target)
 	if direction.length() > 0.1:
-		player_mesh.rotation.y = atan2(direction.x, direction.z)
+		player_mesh.rotation.y = atan2(-direction.x, -direction.z)
 	
 	# Check hit enemies
 	var hit_any := false
@@ -632,9 +633,18 @@ func _screen_to_world_dir(screen_dir: Vector2) -> Vector3:
 	var normalized = screen_dir.normalized()
 	return (right * normalized.x + forward * -normalized.y).normalized()
 
+func _submit_and_save():
+	if _score_submitted or points <= 0:
+		return
+	_score_submitted = true
+	if Api:
+		Api.submit_score(points, func(ok, _result): print("[api] score submit: ", ok))
+		Api.save_state(wave, {"points": points, "wave": wave}, func(ok, _result): print("[api] state save: ", ok))
+
 func _restart():
 	game_state = 1
 	hud.hide_center()
+	_score_submitted = false
 	points = 0
 	wave = 1
 	combo = 0
