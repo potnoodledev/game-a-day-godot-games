@@ -1,0 +1,10 @@
+# Godot editor cache
+.godot/
+
+# MCP interaction server (auto-added by godot-mcp)
+mcp_interaction_server.gd
+mcp_interaction_server.gd.uid
+
+# Test projects
+day-test/
+day-test-3d/
