@@ -1,0 +1,11 @@
+Model Information:
+* title:	Lowpoly Cat Rig + Run Animation
+* source:	https://sketchfab.com/3d-models/lowpoly-cat-rig-run-animation-c36df576c9ae4ed28e89069b1a2f427a
+* author:	Daily Lowpoly (https://sketchfab.com/dailyfree3d)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Lowpoly Cat Rig + Run Animation" (https://sketchfab.com/3d-models/lowpoly-cat-rig-run-animation-c36df576c9ae4ed28e89069b1a2f427a) by Daily Lowpoly (https://sketchfab.com/dailyfree3d) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

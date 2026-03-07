@@ -1,0 +1,11 @@
+Model Information:
+* title:	Cartoon Cat
+* source:	https://sketchfab.com/3d-models/cartoon-cat-4a738eaed9d34547a3f5a705a0e37c6a
+* author:	Baydinman (https://sketchfab.com/baydinman)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Cartoon Cat" (https://sketchfab.com/3d-models/cartoon-cat-4a738eaed9d34547a3f5a705a0e37c6a) by Baydinman (https://sketchfab.com/baydinman) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

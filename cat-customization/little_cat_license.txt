@@ -1,0 +1,8 @@
+Model Information:
+* title:	Little Cat
+* source:	https://sketchfab.com/3d-models/little-cat-1e6f360989b04b53a393f398d5372205
+* author:	cacaoin3d (https://sketchfab.com/cacaoin3d)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works

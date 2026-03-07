@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://debug_view.gd" id="1_6yyhd"]
+
+[node name="root" type="Node3D" unique_id=865988850]
+script = ExtResource("1_6yyhd")
