@@ -520,9 +520,9 @@ func _update_bone_scales(slider_name: String, value: float) -> void:
 	bone_custom_scales["Bone3_03"] = Vector3(body_w, 1.0, body_w)
 
 	# Tail size: 0.0 - 2.0 (0.5 = 1.0, 0 = no tail, 1 = max fluffy)
+	# Only scale the root tail bone — child bones compound the parent's scale
 	var tail_s: float = lerp(0.0, 2.0, tail_v)
-	for tbone in ["Tail_B1_040", "Tail_B2_041", "Tail_B3_042", "Tail_B4_043", "Tail_B5_044"]:
-		bone_custom_scales[tbone] = Vector3(tail_s, tail_s, tail_s)
+	bone_custom_scales["Tail_B1_040"] = Vector3(tail_s, tail_s, tail_s)
 
 	# Update label
 	if slider_labels.has(slider_name):
