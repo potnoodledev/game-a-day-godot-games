@@ -25,11 +25,11 @@ var anim_label: Label
 # Bone scaling customization
 # Each entry: [slider_value (0-1 mapped to scale range), [bone_names], scale_axis_fn]
 var bone_scale_values := {
-	"head_size": 1.0,
-	"eye_size": 1.0,
-	"eye_spacing": 1.0,
-	"body_width": 1.0,
-	"tail_size": 1.0,
+	"head_size": 0.5,
+	"eye_size": 0.5,
+	"eye_spacing": 0.5,
+	"body_width": 0.5,
+	"tail_size": 0.5,
 }
 # Bone name -> custom Vector3 scale to apply each frame on top of animation
 var bone_custom_scales := {}
@@ -538,28 +538,26 @@ func _update_bone_scales(slider_name: String, value: float) -> void:
 # --- Input ---
 
 func _process(_delta: float) -> void:
-	pass
-	## BONE SCALING DISABLED FOR DEBUGGING — uncomment to re-enable
-	#if not skeleton or bone_custom_scales.is_empty():
-	#	return
-	#for bone_name in bone_custom_scales:
-	#	var custom: Vector3 = bone_custom_scales[bone_name]
-	#	if custom == Vector3.ONE:
-	#		continue
-	#	var idx := skeleton.find_bone(bone_name)
-	#	if idx >= 0:
-	#		var anim_scale := skeleton.get_bone_pose_scale(idx)
-	#		skeleton.set_bone_pose_scale(idx, anim_scale * custom)
-	#
-	#var spacing_v: float = bone_scale_values["eye_spacing"]
-	#var spacing: float = lerp(0.8, 1.2, spacing_v)
-	#if not is_equal_approx(spacing, 1.0):
-	#	for eye_bone in ["Aye_L_06", "Aye_R_021"]:
-	#		var idx := skeleton.find_bone(eye_bone)
-	#		if idx >= 0:
-	#			var pos := skeleton.get_bone_pose_position(idx)
-	#			pos.x *= spacing
-	#			skeleton.set_bone_pose_position(idx, pos)
+	if not skeleton or bone_custom_scales.is_empty():
+		return
+	for bone_name in bone_custom_scales:
+		var custom: Vector3 = bone_custom_scales[bone_name]
+		if custom.is_equal_approx(Vector3.ONE):
+			continue
+		var idx := skeleton.find_bone(bone_name)
+		if idx >= 0:
+			var anim_scale := skeleton.get_bone_pose_scale(idx)
+			skeleton.set_bone_pose_scale(idx, anim_scale * custom)
+
+	var spacing_v: float = bone_scale_values["eye_spacing"]
+	var spacing: float = lerp(0.8, 1.2, spacing_v)
+	if not is_equal_approx(spacing, 1.0):
+		for eye_bone in ["Aye_L_06", "Aye_R_021"]:
+			var idx := skeleton.find_bone(eye_bone)
+			if idx >= 0:
+				var pos := skeleton.get_bone_pose_position(idx)
+				pos.x *= spacing
+				skeleton.set_bone_pose_position(idx, pos)
 
 
 func _input(event: InputEvent) -> void:
