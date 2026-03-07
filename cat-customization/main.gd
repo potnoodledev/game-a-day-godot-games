@@ -21,6 +21,10 @@ var cam_target := Vector3(0, 0.5, 0)
 var current_anim := 0
 var anim_names: Array = []  # populated from model
 var anim_label: Label
+var anim_scrubber: HSlider
+var anim_paused := false
+var pause_check: CheckBox
+var scrubbing := false
 
 # Bone scaling customization
 # Each entry: [slider_value (0-1 mapped to scale range), [bone_names], scale_axis_fn]
@@ -333,6 +337,28 @@ func _setup_ui() -> void:
 	_add_button("<", Vector2(600, row3_y), Vector2(36, 30), ui_container, _prev_anim)
 	_add_button(">", Vector2(640, row3_y), Vector2(36, 30), ui_container, _next_anim)
 
+	# Animation scrubber + pause (row below row3)
+	var row4_y := row3_y + 38.0
+	pause_check = CheckBox.new()
+	pause_check.text = "Pause"
+	pause_check.position = Vector2(430, row4_y)
+	pause_check.add_theme_font_size_override("font_size", 14)
+	pause_check.add_theme_color_override("font_color", Color.WHITE)
+	pause_check.toggled.connect(_on_pause_toggled)
+	ui_container.add_child(pause_check)
+
+	anim_scrubber = HSlider.new()
+	anim_scrubber.position = Vector2(530, row4_y + 4)
+	anim_scrubber.size = Vector2(150, 22)
+	anim_scrubber.min_value = 0.0
+	anim_scrubber.max_value = 1.0
+	anim_scrubber.step = 0.005
+	anim_scrubber.value = 0.0
+	anim_scrubber.drag_started.connect(_on_scrubber_drag_started)
+	anim_scrubber.drag_ended.connect(_on_scrubber_drag_ended)
+	anim_scrubber.value_changed.connect(_on_scrubber_changed)
+	ui_container.add_child(anim_scrubber)
+
 	# Right side: Body shape sliders
 	var slider_x := 720.0
 	var slider_w := 160.0
@@ -372,7 +398,7 @@ func _setup_ui() -> void:
 	# Drag hint
 	click_label = Label.new()
 	click_label.text = "LMB: rotate | RMB: pan | Scroll: zoom"
-	click_label.position = Vector2(20, 556)
+	click_label.position = Vector2(20, 590)
 	click_label.add_theme_font_size_override("font_size", 13)
 	click_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.4))
 	ui_container.add_child(click_label)
@@ -487,10 +513,36 @@ func _apply_anim() -> void:
 		return
 	var anim_name: String = anim_names[current_anim]
 	anim_player.play(anim_name)
-	anim_player.speed_scale = 1.0
+	anim_player.speed_scale = 0.0 if anim_paused else 1.0
 
 	if anim_label:
 		anim_label.text = anim_name
+
+func _on_pause_toggled(pressed: bool) -> void:
+	anim_paused = pressed
+	if anim_player:
+		anim_player.speed_scale = 0.0 if anim_paused else 1.0
+
+func _on_scrubber_drag_started() -> void:
+	scrubbing = true
+	anim_paused = true
+	if anim_player:
+		anim_player.speed_scale = 0.0
+	if pause_check:
+		pause_check.set_pressed_no_signal(true)
+
+func _on_scrubber_drag_ended(_value_changed: bool) -> void:
+	scrubbing = false
+
+func _on_scrubber_changed(value: float) -> void:
+	if not scrubbing or not anim_player:
+		return
+	var anim_name: String = anim_player.current_animation
+	if anim_name.is_empty():
+		return
+	var anim := anim_player.get_animation(anim_name)
+	if anim:
+		anim_player.seek(value * anim.length, true)
 
 func _on_bone_slider(value: float, slider_name: String) -> void:
 	_update_bone_scales(slider_name, value)
@@ -538,6 +590,14 @@ func _update_bone_scales(slider_name: String, value: float) -> void:
 # --- Input ---
 
 func _process(_delta: float) -> void:
+	# Update scrubber position from animation playback
+	if anim_scrubber and anim_player and not scrubbing:
+		var anim_name := anim_player.current_animation
+		if not anim_name.is_empty():
+			var anim := anim_player.get_animation(anim_name)
+			if anim and anim.length > 0:
+				anim_scrubber.set_value_no_signal(anim_player.current_animation_position / anim.length)
+
 	if not skeleton or bone_custom_scales.is_empty():
 		return
 	for bone_name in bone_custom_scales:
