@@ -22,6 +22,8 @@ signal camera_changed(distance: float, angle_y: float, angle_x: float)
 signal auto_rotate_changed(enabled: bool)
 signal scene_changed(scene_id: String)
 signal weapon_changed(weapon_id: String)
+signal hat_changed(hat_id: String)
+signal camera_target_changed(x: float, y: float, z: float)
 
 var _poll_counter := 0
 var _js_available := false
@@ -77,6 +79,8 @@ func _emit_initial_config() -> void:
 		scene_changed.emit(cfg["scene"])
 	if cfg.has("weapon"):
 		weapon_changed.emit(cfg["weapon"])
+	if cfg.has("hat"):
+		hat_changed.emit(cfg["hat"])
 
 func _setup_js_bridge() -> void:
 	# Install the catViewer API and command queue on the JS side
@@ -95,8 +99,10 @@ func _setup_js_bridge() -> void:
 			setAutoRotate: function(enabled) { window._catCommands.push({cmd:'set_auto_rotate',value:enabled}); },
 			setScene: function(id) { window._catCommands.push({cmd:'set_scene',value:id}); },
 			setWeapon: function(id) { window._catCommands.push({cmd:'set_weapon',value:id}); },
+			setHat: function(id) { window._catCommands.push({cmd:'set_hat',value:id}); },
 			getAnimations: function() { return window._catAnimations || []; },
 			getScenes: function() { return window._catScenes || []; },
+			getHats: function() { return window._catHats || []; },
 			getConfig: function() { return window._catCurrentConfig || {}; },
 		};
 		return 'installed';
@@ -158,6 +164,10 @@ func _dispatch_command(cmd: Dictionary) -> void:
 			scene_changed.emit(cmd["value"])
 		"set_weapon":
 			weapon_changed.emit(cmd["value"])
+		"set_hat":
+			hat_changed.emit(cmd["value"])
+		"set_camera_target":
+			camera_target_changed.emit(cmd["x"], cmd["y"], cmd["z"])
 
 ## Called by main.gd to publish animation list back to JS
 func publish_animations(names: Array) -> void:
@@ -172,6 +182,13 @@ func publish_scenes(ids: Array) -> void:
 		return
 	var json := JSON.stringify(ids)
 	JavaScriptBridge.eval("window._catScenes=" + json)
+
+## Called by main.gd to publish hat list back to JS
+func publish_hats(ids: Array) -> void:
+	if not _js_available:
+		return
+	var json := JSON.stringify(ids)
+	JavaScriptBridge.eval("window._catHats=" + json)
 
 ## Called by main.gd to publish current config back to JS
 func publish_config(config: Dictionary) -> void:

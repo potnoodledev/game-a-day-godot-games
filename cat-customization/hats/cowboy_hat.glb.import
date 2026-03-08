@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cqk13h2ovc2nc"
-path="res://.godot/imported/cartoon_cat.gltf-8b483198333bd6c37a0bb9bbce2f28a5.scn"
+uid="uid://c0b1iu1pk40ll"
+path="res://.godot/imported/cowboy_hat.glb-d69f83cbafcbc26b66ae853e01dbcc4b.scn"
 
 [deps]
 
-source_file="res://cartoon_cat.gltf"
-dest_files=["res://.godot/imported/cartoon_cat.gltf-8b483198333bd6c37a0bb9bbce2f28a5.scn"]
+source_file="res://hats/cowboy_hat.glb"
+dest_files=["res://.godot/imported/cowboy_hat.glb-d69f83cbafcbc26b66ae853e01dbcc4b.scn"]
 
 [params]
 

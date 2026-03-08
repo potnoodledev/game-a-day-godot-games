@@ -158,6 +158,11 @@ select {
   </div>
 
   <div class="section">
+    <div class="section-title">Hat</div>
+    <select id="hat-select"><option value="none">None</option></select>
+  </div>
+
+  <div class="section">
     <div class="section-title">Weapon</div>
     <select id="weapon-select">
       <option value="none">None</option>
@@ -344,9 +349,13 @@ window.catViewer = {
   // Weapon
   setWeapon: (id) => window._catCommands.push({cmd:'set_weapon',value:id}),
 
+  // Hat
+  setHat: (id) => window._catCommands.push({cmd:'set_hat',value:id}),
+
   // Read-only (available after engine loads)
   getAnimations: () => window._catAnimations || [],
   getScenes: () => window._catScenes || [],
+  getHats: () => window._catHats || [],
 
   // Bulk configure
   configure: (opts) => {
@@ -478,6 +487,7 @@ document.getElementById('bone-head').addEventListener('input', (e) => catViewer.
 document.getElementById('bone-eye').addEventListener('input', (e) => catViewer.setBoneScale('eye_size', parseFloat(e.target.value)));
 document.getElementById('bone-body').addEventListener('input', (e) => catViewer.setBoneScale('body_width', parseFloat(e.target.value)));
 document.getElementById('bone-tail').addEventListener('input', (e) => catViewer.setBoneScale('tail_size', parseFloat(e.target.value)));
+document.getElementById('hat-select').addEventListener('change', (e) => catViewer.setHat(e.target.value));
 document.getElementById('weapon-select').addEventListener('change', (e) => catViewer.setWeapon(e.target.value));
 document.getElementById('scene-select').addEventListener('change', (e) => catViewer.setScene(e.target.value));
 document.getElementById('auto-rotate').addEventListener('change', (e) => catViewer.setAutoRotate(e.target.checked));
@@ -504,6 +514,20 @@ function pollLists() {
     renderAnimList();
   } else if (allAnims.length === 0) { done = false; }
 
+  const hats = window._catHats;
+  if (hats && hats.length > 0) {
+    const select = document.getElementById('hat-select');
+    if (select.options.length <= 1) {
+      select.innerHTML = '';
+      hats.forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = id === 'none' ? 'None' : id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        select.appendChild(opt);
+      });
+    }
+  } else { done = false; }
+
   const scenes = window._catScenes;
   if (scenes && scenes.length > 0) {
     const select = document.getElementById('scene-select');
@@ -521,6 +545,144 @@ function pollLists() {
   if (!done) setTimeout(pollLists, 500);
 }
 pollLists();
+
+// --- Camera orbit/zoom (mouse + touch) ---
+const cam = { distance: 1.8, angleY: 0, angleX: -5, targetX: 0, targetY: 0.55, targetZ: 0, dragging: false, panning: false, lastX: 0, lastY: 0 };
+const ORBIT_SENSITIVITY = 0.4;
+const ZOOM_SENSITIVITY = 0.002;
+const PINCH_SENSITIVITY = 0.01;
+const PAN_SENSITIVITY = 0.003;
+const MIN_DIST = 0.5;
+const MAX_DIST = 5.0;
+const MIN_PITCH = -80;
+const MAX_PITCH = 80;
+
+function sendCamera() {
+  // Disable auto-rotate when user manually orbits
+  const arCheckbox = document.getElementById('auto-rotate');
+  if (arCheckbox.checked) {
+    arCheckbox.checked = false;
+    catViewer.setAutoRotate(false);
+  }
+  catViewer.setCamera(cam.distance, cam.angleY, cam.angleX);
+}
+
+function sendTarget() {
+  window._catCommands.push({cmd:'set_camera_target', x:cam.targetX, y:cam.targetY, z:cam.targetZ});
+}
+
+function panCamera(dx, dy) {
+  // Pan in camera-local right/up directions
+  const radY = cam.angleY * Math.PI / 180;
+  const scale = cam.distance * PAN_SENSITIVITY;
+  // Right vector (horizontal pan)
+  cam.targetX += -Math.cos(radY) * dx * scale;
+  cam.targetZ += Math.sin(radY) * dx * scale;
+  // Up vector (vertical pan)
+  cam.targetY += dy * scale;
+  sendTarget();
+  sendCamera();
+}
+
+// Mouse orbit + pan
+const canvas = document.getElementById('canvas');
+
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button === 0) { cam.dragging = true; cam.lastX = e.clientX; cam.lastY = e.clientY; }
+  if (e.button === 1) { e.preventDefault(); cam.panning = true; cam.lastX = e.clientX; cam.lastY = e.clientY; }
+});
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+window.addEventListener('mouseup', (e) => {
+  if (e.button === 0) cam.dragging = false;
+  if (e.button === 1) cam.panning = false;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!cam.dragging && !cam.panning) return;
+  const dx = e.clientX - cam.lastX;
+  const dy = e.clientY - cam.lastY;
+  cam.lastX = e.clientX;
+  cam.lastY = e.clientY;
+  if (cam.panning) {
+    panCamera(dx, dy);
+  } else {
+    cam.angleY += dx * ORBIT_SENSITIVITY;
+    cam.angleX = Math.max(MIN_PITCH, Math.min(MAX_PITCH, cam.angleX - dy * ORBIT_SENSITIVITY));
+    sendCamera();
+  }
+});
+
+// Mouse wheel zoom
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  cam.distance = Math.max(MIN_DIST, Math.min(MAX_DIST, cam.distance + e.deltaY * ZOOM_SENSITIVITY));
+  sendCamera();
+}, { passive: false });
+
+// Touch: 1-finger orbit, 2-finger pan + pinch zoom
+let touchCache = [];
+let lastPinchDist = 0;
+let lastTwoMidX = 0;
+let lastTwoMidY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+  if (e.target !== canvas) return;
+  touchCache = Array.from(e.touches);
+  if (touchCache.length === 1) {
+    cam.lastX = touchCache[0].clientX;
+    cam.lastY = touchCache[0].clientY;
+  }
+  if (touchCache.length === 2) {
+    lastPinchDist = Math.hypot(
+      touchCache[1].clientX - touchCache[0].clientX,
+      touchCache[1].clientY - touchCache[0].clientY
+    );
+    lastTwoMidX = (touchCache[0].clientX + touchCache[1].clientX) / 2;
+    lastTwoMidY = (touchCache[0].clientY + touchCache[1].clientY) / 2;
+  }
+}, { passive: true });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (e.target !== canvas) return;
+  e.preventDefault();
+  const touches = Array.from(e.touches);
+
+  if (touches.length === 1) {
+    // Orbit
+    const dx = touches[0].clientX - cam.lastX;
+    const dy = touches[0].clientY - cam.lastY;
+    cam.lastX = touches[0].clientX;
+    cam.lastY = touches[0].clientY;
+    cam.angleY += dx * ORBIT_SENSITIVITY;
+    cam.angleX = Math.max(MIN_PITCH, Math.min(MAX_PITCH, cam.angleX - dy * ORBIT_SENSITIVITY));
+    sendCamera();
+  } else if (touches.length === 2) {
+    // Pinch zoom
+    const pinchDist = Math.hypot(
+      touches[1].clientX - touches[0].clientX,
+      touches[1].clientY - touches[0].clientY
+    );
+    if (lastPinchDist > 0) {
+      const delta = lastPinchDist - pinchDist;
+      cam.distance = Math.max(MIN_DIST, Math.min(MAX_DIST, cam.distance + delta * PINCH_SENSITIVITY));
+    }
+    lastPinchDist = pinchDist;
+
+    // Two-finger pan
+    const midX = (touches[0].clientX + touches[1].clientX) / 2;
+    const midY = (touches[0].clientY + touches[1].clientY) / 2;
+    const panDx = midX - lastTwoMidX;
+    const panDy = midY - lastTwoMidY;
+    lastTwoMidX = midX;
+    lastTwoMidY = midY;
+    panCamera(panDx, panDy);
+  }
+  touchCache = touches;
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  touchCache = Array.from(e.touches);
+  if (touchCache.length < 2) { lastPinchDist = 0; }
+}, { passive: true });
 
 // --- Start Godot engine ---
 const GODOT_CONFIG = {

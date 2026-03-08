@@ -18,6 +18,13 @@ var sword_node: Node3D  # Parent Node3D containing the sword mesh
 var gun_node: Node3D    # Parent Node3D containing the gun mesh
 var current_weapon: String = "none"  # "none", "sword", "gun"
 
+# Hats
+var hat_attachment: BoneAttachment3D
+var current_hat_node: Node3D
+var current_hat: String = "none"
+var hat_registry: Dictionary = {}
+var hat_ids: Array = []
+
 # Environment nodes (stored for SceneManager)
 var world_env_node: WorldEnvironment
 var key_light_node: DirectionalLight3D
@@ -75,9 +82,12 @@ func _connect_bridge() -> void:
 	bridge.auto_rotate_changed.connect(_on_set_auto_rotate)
 	bridge.scene_changed.connect(_on_set_scene)
 	bridge.weapon_changed.connect(_on_set_weapon)
+	bridge.hat_changed.connect(_on_set_hat)
+	bridge.camera_target_changed.connect(_on_set_camera_target)
 	# Publish lists to JS
 	bridge.publish_animations(anim_names)
 	bridge.publish_scenes(SceneRegistryScript.get_scene_ids())
+	bridge.publish_hats(hat_ids)
 	print("[cat] Bridge connected")
 
 # --- Environment ---
@@ -150,6 +160,7 @@ func _load_cat() -> void:
 	_setup_fur_shader(cat_instance)
 	_find_weapon_nodes(cat_instance)
 	_remove_non_skinned_meshes(cat_instance)
+	_load_hat_registry()
 
 	anim_player = _find_node_by_class(cat_instance, "AnimationPlayer")
 	if anim_player:
@@ -173,6 +184,7 @@ func _load_cat() -> void:
 	skeleton = _find_node_by_class(cat_instance, "Skeleton3D")
 	if skeleton:
 		print("[cat] Skeleton: ", skeleton.get_bone_count(), " bones")
+		_setup_hat_attachment()
 	_find_eye_mesh(cat_instance)
 	print("[cat] Cat loaded")
 
@@ -268,6 +280,75 @@ func _find_node_by_class(node: Node, class_name_str: String) -> Node:
 			return result
 	return null
 
+# --- Hats ---
+
+func _load_hat_registry() -> void:
+	var path := "res://hats/hat_registry.json"
+	if not FileAccess.file_exists(path):
+		print("[cat] No hat registry found")
+		return
+	var file := FileAccess.open(path, FileAccess.READ)
+	var json := JSON.parse_string(file.get_as_text())
+	if json is Dictionary:
+		hat_registry = json
+		hat_ids = ["none"] + Array(hat_registry.keys())
+		print("[cat] Loaded ", hat_registry.size(), " hats")
+
+func _setup_hat_attachment() -> void:
+	if not skeleton:
+		return
+	var head_idx := skeleton.find_bone("Head_05")
+	if head_idx < 0:
+		print("[cat] Head_05 bone not found")
+		return
+	hat_attachment = BoneAttachment3D.new()
+	hat_attachment.bone_name = "Head_05"
+	skeleton.add_child(hat_attachment)
+	print("[cat] Hat attachment ready on Head_05")
+
+func _on_set_hat(hat_id: String) -> void:
+	if hat_id == current_hat:
+		return
+	# Remove current hat
+	if current_hat_node:
+		current_hat_node.queue_free()
+		current_hat_node = null
+	current_hat = hat_id
+
+	if hat_id == "none" or not hat_registry.has(hat_id):
+		if hat_id != "none":
+			print("[cat] Unknown hat: ", hat_id)
+		return
+
+	var info: Dictionary = hat_registry[hat_id]
+	var glb_path = "res://hats/" + str(info["file"])
+	var scene = load(glb_path)
+	if not scene:
+		print("[cat] Could not load hat: ", glb_path)
+		return
+
+	current_hat_node = scene.instantiate()
+
+	# Apply offset
+	var offset = info.get("offset", [0, 0, 0])
+	current_hat_node.position = Vector3(offset[0], offset[1], offset[2])
+
+	# Apply rotation (degrees)
+	var rot = info.get("rotation", [0, 0, 0])
+	current_hat_node.rotation_degrees = Vector3(rot[0], rot[1], rot[2])
+
+	# Apply scale
+	var scl = info.get("scale", [1, 1, 1])
+	current_hat_node.scale = Vector3(scl[0], scl[1], scl[2])
+
+	if not hat_attachment:
+		print("[cat] No hat attachment point")
+		current_hat_node.queue_free()
+		current_hat_node = null
+		return
+	hat_attachment.add_child(current_hat_node)
+	print("[cat] Hat: ", hat_id)
+
 # --- External Commands ---
 
 func _on_set_animation(anim_name: String) -> void:
@@ -325,6 +406,10 @@ func _on_set_camera(distance: float, angle_y: float, angle_x: float) -> void:
 	cam_angle_y = angle_y
 	cam_angle_x = angle_x
 	auto_rotate = false
+	_update_camera()
+
+func _on_set_camera_target(x: float, y: float, z: float) -> void:
+	cam_target = Vector3(x, y, z)
 	_update_camera()
 
 func _on_set_auto_rotate(enabled: bool) -> void:

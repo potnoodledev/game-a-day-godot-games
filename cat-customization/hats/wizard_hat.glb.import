@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cqk13h2ovc2nc"
-path="res://.godot/imported/cartoon_cat.gltf-8b483198333bd6c37a0bb9bbce2f28a5.scn"
+uid="uid://bfsne2vyk2wcd"
+path="res://.godot/imported/wizard_hat.glb-cb5a71d94d6498c7b3e31a9a39a98946.scn"
 
 [deps]
 
-source_file="res://cartoon_cat.gltf"
-dest_files=["res://.godot/imported/cartoon_cat.gltf-8b483198333bd6c37a0bb9bbce2f28a5.scn"]
+source_file="res://hats/wizard_hat.glb"
+dest_files=["res://.godot/imported/wizard_hat.glb-cb5a71d94d6498c7b3e31a9a39a98946.scn"]
 
 [params]
 

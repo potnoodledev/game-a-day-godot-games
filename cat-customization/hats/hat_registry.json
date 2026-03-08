@@ -1,0 +1,156 @@
+{
+  "wizard_hat": {
+    "file": "wizard_hat.glb",
+    "display_name": "Stylized wizard hat",
+    "offset": [
+      0.0,
+      0.08,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "source_uid": "f59021d602334367987bcd7657cec722",
+    "license": "CC Attribution",
+    "author": "Enkarra"
+  },
+  "pirate_hat": {
+    "file": "pirate_hat.glb",
+    "display_name": "Tricorn hat lowpoly",
+    "offset": [
+      0.0,
+      0.08,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "source_uid": "ac0ecde570ba49c9adecd0b6820a84c0",
+    "license": "CC Attribution",
+    "author": "Aartee"
+  },
+  "cowboy_hat": {
+    "file": "cowboy_hat.glb",
+    "display_name": "Cowboy Hat (Free)",
+    "offset": [
+      0.0,
+      0.08,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "source_uid": "bd968c68d7b74629a7e062af0842082b",
+    "license": "CC Attribution",
+    "author": "wolfgar74"
+  },
+  "crown": {
+    "file": "crown.glb",
+    "display_name": "Golden crown",
+    "offset": [
+      0.0,
+      0.08,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "source_uid": "5689a9525a2c425d93f7d483b93d8cfa",
+    "license": "CC Attribution",
+    "author": "Pieter Ferreira"
+  },
+  "winter_hat": {
+    "file": "winter_hat.glb",
+    "display_name": "Winter Hat",
+    "offset": [
+      0.0,
+      0.08,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "source_uid": "637a36cb74204c719883af7feb4b7c28",
+    "license": "CC Attribution",
+    "author": "StubbornFunkyDonkey"
+  },
+  "chef_hat": {
+    "file": "chef_hat.glb",
+    "display_name": "Chef Hat (Toon)",
+    "offset": [
+      0.0,
+      0.08,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "source_uid": "0fe884ae9a734e22b6d1eb41127f1cc6",
+    "license": "CC Attribution",
+    "author": "shimtimultimedia"
+  },
+  "viking_helmet": {
+    "file": "viking_helmet.glb",
+    "display_name": "Viking Helmet",
+    "offset": [
+      0.0,
+      0.08,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "source_uid": "cc2eeb3748ca486a8a97b4a55fba5658",
+    "license": "CC Attribution",
+    "author": "Chuwakcz"
+  }
+}

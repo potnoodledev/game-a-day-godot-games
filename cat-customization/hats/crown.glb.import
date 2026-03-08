@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cqk13h2ovc2nc"
-path="res://.godot/imported/cartoon_cat.gltf-8b483198333bd6c37a0bb9bbce2f28a5.scn"
+uid="uid://cxneejp5dupmu"
+path="res://.godot/imported/crown.glb-cb6d1ee0b0c5d73a6aee74a92f89da42.scn"
 
 [deps]
 
-source_file="res://cartoon_cat.gltf"
-dest_files=["res://.godot/imported/cartoon_cat.gltf-8b483198333bd6c37a0bb9bbce2f28a5.scn"]
+source_file="res://hats/crown.glb"
+dest_files=["res://.godot/imported/crown.glb-cb6d1ee0b0c5d73a6aee74a92f89da42.scn"]
 
 [params]
 
