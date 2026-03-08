@@ -2,6 +2,9 @@ extends Node3D
 ## Cat Viewer — headless 3D cat renderer controlled externally via Bridge autoload.
 ## No UI or input handling — all customization comes from the HTML5 wrapper.
 
+const SceneRegistryScript = preload("res://scenes/scene_registry.gd")
+const SceneManagerScript = preload("res://scenes/scene_manager.gd")
+
 var cat_instance: Node3D
 var anim_player: AnimationPlayer
 var fur_shader_mat: ShaderMaterial
@@ -9,6 +12,13 @@ var body_meshes: Array[MeshInstance3D] = []
 var eye_mesh_node: MeshInstance3D
 var camera: Camera3D
 var skeleton: Skeleton3D
+
+# Environment nodes (stored for SceneManager)
+var world_env_node: WorldEnvironment
+var key_light_node: DirectionalLight3D
+var fill_light_node: DirectionalLight3D
+var floor_mesh_node: MeshInstance3D
+var scene_manager: Node  # SceneManager instance
 
 # Orbit camera
 var cam_distance := 1.8
@@ -38,6 +48,7 @@ func _ready() -> void:
 	_setup_environment()
 	_setup_camera()
 	_setup_floor()
+	_setup_scene_manager()
 	_load_cat()
 	_connect_bridge()
 	# Apply defaults
@@ -57,8 +68,10 @@ func _connect_bridge() -> void:
 	bridge.bone_scale_changed.connect(_update_bone_scales)
 	bridge.camera_changed.connect(_on_set_camera)
 	bridge.auto_rotate_changed.connect(_on_set_auto_rotate)
-	# Publish animation list to JS
+	bridge.scene_changed.connect(_on_set_scene)
+	# Publish lists to JS
 	bridge.publish_animations(anim_names)
+	bridge.publish_scenes(SceneRegistryScript.get_scene_ids())
 	print("[cat] Bridge connected")
 
 # --- Environment ---
@@ -68,31 +81,19 @@ func _setup_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.4, 0.6, 0.9)
-	sky_mat.sky_horizon_color = Color(0.7, 0.8, 0.95)
-	sky_mat.ground_bottom_color = Color(0.3, 0.25, 0.2)
-	sky_mat.ground_horizon_color = Color(0.6, 0.55, 0.5)
 	sky.sky_material = sky_mat
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.5
-	env.ssao_enabled = true
-	var we := WorldEnvironment.new()
-	we.environment = env
-	add_child(we)
+	world_env_node = WorldEnvironment.new()
+	world_env_node.environment = env
+	add_child(world_env_node)
 
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-45, 30, 0)
-	light.shadow_enabled = true
-	light.light_energy = 2.5
-	light.light_color = Color(1.0, 0.95, 0.85)
-	add_child(light)
+	key_light_node = DirectionalLight3D.new()
+	key_light_node.shadow_enabled = true
+	add_child(key_light_node)
 
-	var fill := DirectionalLight3D.new()
-	fill.rotation_degrees = Vector3(-20, -60, 0)
-	fill.light_energy = 0.8
-	fill.light_color = Color(0.7, 0.8, 1.0)
-	add_child(fill)
+	fill_light_node = DirectionalLight3D.new()
+	add_child(fill_light_node)
 
 func _setup_camera() -> void:
 	camera = Camera3D.new()
@@ -114,15 +115,18 @@ func _update_camera() -> void:
 	camera.look_at(cam_target)
 
 func _setup_floor() -> void:
-	var floor_mesh := MeshInstance3D.new()
+	floor_mesh_node = MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(5, 5)
-	floor_mesh.mesh = plane
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.3, 0.35, 0.3)
-	mat.roughness = 0.9
-	floor_mesh.material_override = mat
-	add_child(floor_mesh)
+	floor_mesh_node.mesh = plane
+	add_child(floor_mesh_node)
+
+func _setup_scene_manager() -> void:
+	scene_manager = SceneManagerScript.new()
+	scene_manager.name = "SceneManager"
+	add_child(scene_manager)
+	scene_manager.setup(world_env_node, key_light_node, fill_light_node, floor_mesh_node)
+	scene_manager.apply_scene("default_studio", false)
 
 # --- Cat Loading ---
 
@@ -252,6 +256,11 @@ func _apply_eye_color(color: Color) -> void:
 	var mat = eye_mesh_node.get_surface_override_material(0)
 	if mat is ShaderMaterial:
 		mat.set_shader_parameter("iris_color", Vector3(color.r, color.g, color.b))
+
+func _on_set_scene(scene_id: String) -> void:
+	if scene_manager:
+		scene_manager.apply_scene(scene_id)
+		print("[cat] Scene: ", scene_id)
 
 func _on_set_camera(distance: float, angle_y: float, angle_x: float) -> void:
 	cam_distance = distance

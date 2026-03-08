@@ -20,6 +20,7 @@ signal eye_color_changed(color: Color)
 signal bone_scale_changed(name: String, value: float)
 signal camera_changed(distance: float, angle_y: float, angle_x: float)
 signal auto_rotate_changed(enabled: bool)
+signal scene_changed(scene_id: String)
 
 var _poll_counter := 0
 var _js_available := false
@@ -71,6 +72,8 @@ func _emit_initial_config() -> void:
 		)
 	if cfg.has("auto_rotate"):
 		auto_rotate_changed.emit(cfg["auto_rotate"])
+	if cfg.has("scene"):
+		scene_changed.emit(cfg["scene"])
 
 func _setup_js_bridge() -> void:
 	# Install the catViewer API and command queue on the JS side
@@ -87,7 +90,9 @@ func _setup_js_bridge() -> void:
 			setBoneScale: function(bone, value) { window._catCommands.push({cmd:'set_bone_scale',bone:bone,value:value}); },
 			setCamera: function(distance, angleY, angleX) { window._catCommands.push({cmd:'set_camera',distance:distance,angle_y:angleY,angle_x:angleX}); },
 			setAutoRotate: function(enabled) { window._catCommands.push({cmd:'set_auto_rotate',value:enabled}); },
+			setScene: function(id) { window._catCommands.push({cmd:'set_scene',value:id}); },
 			getAnimations: function() { return window._catAnimations || []; },
+			getScenes: function() { return window._catScenes || []; },
 			getConfig: function() { return window._catCurrentConfig || {}; },
 		};
 		return 'installed';
@@ -145,6 +150,8 @@ func _dispatch_command(cmd: Dictionary) -> void:
 			camera_changed.emit(cmd["distance"], cmd["angle_y"], cmd["angle_x"])
 		"set_auto_rotate":
 			auto_rotate_changed.emit(cmd["value"])
+		"set_scene":
+			scene_changed.emit(cmd["value"])
 
 ## Called by main.gd to publish animation list back to JS
 func publish_animations(names: Array) -> void:
@@ -152,6 +159,13 @@ func publish_animations(names: Array) -> void:
 		return
 	var json := JSON.stringify(names)
 	JavaScriptBridge.eval("window._catAnimations=" + json)
+
+## Called by main.gd to publish scene list back to JS
+func publish_scenes(ids: Array) -> void:
+	if not _js_available:
+		return
+	var json := JSON.stringify(ids)
+	JavaScriptBridge.eval("window._catScenes=" + json)
 
 ## Called by main.gd to publish current config back to JS
 func publish_config(config: Dictionary) -> void:
