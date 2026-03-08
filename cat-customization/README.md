@@ -20,6 +20,10 @@ A real-time cat customizer built in Godot 4.6.1. Features procedural fur pattern
 - **Cartoon Cat**: [Cartoon Cat](https://sketchfab.com/3d-models/cartoon-cat-4a738eaed9d34547a3f5a705a0e37c6a) by [Baydinman](https://sketchfab.com/Baydinman), licensed under [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/). Bipedal, 25 combat animations (sword/pistol/arm attacks, hit/death reactions, idle variations).
 - **Little Cat**: [Little Cat](https://sketchfab.com/3d-models/little-cat-1e6f360989b04b53a393f398d5372205) by [Southport Art Studio](https://sketchfab.com/SouthportArtStudio), licensed under Sketchfab Free Standard. Chibi humanoid, 10 animations (idle, walk, run, jump, greeting, eat, sleep).
 
+### Animation Sources
+
+- **Rokoko Free Walk/Run Cycles**: [16 free walk and run cycle animations](https://www.rokoko.com/resources/rokoko-mocap-16-free-walk-and-run-cycle-animations) by [Rokoko](https://www.rokoko.com/), licensed under CC0. 9 use Mixamo skeleton (compatible with our retarget pipeline), 7 use Rokoko's own skeleton. We retargeted all 9 Mixamo-skeleton walks.
+
 ## Animation Inventory
 
 | Model | Anims | Combat? | Animations |
@@ -27,7 +31,7 @@ A real-time cat customizer built in Godot 4.6.1. Features procedural fur pattern
 | Our Cat | 1 | No | run |
 | Somali Cat | 5 | No | Idle, SitDown, SittingIdle, StandUp, WalkClean |
 | Black Cat | 4 | No | Idle, Run, SlowWalk, Walk |
-| Cartoon Cat | 30 | **Yes** | Sword (Idle/Light/Medium/Hight/End), Pistol (Idle/Light/Medium/Hight/End), Arm (Idle/Light/Medium/Hight/End), Hit/Death per weapon type, 4 idle variations, **5 retargeted walks** (Walk, HappyWalk, SlowWalk, CoolWalk, Pacing) |
+| Cartoon Cat | 34 | **Yes** | Sword (Idle/Light/Medium/Hight/End), Pistol (Idle/Light/Medium/Hight/End), Arm (Idle/Light/Medium/Hight/End), Hit/Death per weapon type, 4 idle variations, **9 retargeted walks** (Walk, HappyWalk, SlowWalk, CoolWalk, Pacing, WindWalk1-4) |
 | Little Cat | 10 | No | TPose, Idle, Walk, Run, Jump, Greeting, Eat, Sleep x3 |
 
 ## Body Customization (Bone Scaling)
@@ -73,16 +77,27 @@ All slider ranges are symmetric around 0.5 so the midpoint (0.5) maps to scale 1
 
 ## Animation Retargeting Pipeline
 
-Added 5 walk/locomotion animations to the Cartoon Cat model (which only had combat/idle anims) by retargeting Rokoko free mocap data through Blender.
+Added 9 walk/locomotion animations to the Cartoon Cat model (which only had combat/idle anims) by retargeting Rokoko free mocap data through Blender.
 
 ### Source Data
 - **Rokoko Free Walk/Run Cycles** (CC0 license): 16 walk/run animations in FBX format
 - 9 use the Mixamo skeleton (compatible), 7 use Rokoko's own skeleton (incompatible)
-- Selected 5 diverse walks: WalkCycle, HappyWalk, SlowWalk, CoolWalk, Pacing
+- All 9 Mixamo-skeleton walks retargeted: WalkCycle, HappyWalk, SlowWalk, CoolWalk, Pacing, WindWalk1-4
+
+### Reusable Script
+```bash
+# Retarget any Mixamo-skeleton FBX onto the Cartoon Cat:
+python3 retarget_mixamo.py walk.fbx Cat_Walk run.fbx Cat_Run
+
+# Then clear Godot cache and reimport:
+rm -f .godot/imported/cartoon_cat* cartoon_cat.gltf.import
+godot --headless --editor --quit-after 30
+```
+The script handles everything: Blender retarget (WORLD space), gltf export, channel filtering, and injection into `cartoon_cat.gltf`. Any Mixamo-skeleton FBX works — download from [Mixamo](https://www.mixamo.com/) or [Rokoko](https://www.rokoko.com/resources/rokoko-mocap-16-free-walk-and-run-cycle-animations).
 
 ### Retarget Process
 1. **Blender constraint-based retarget**: Import cartoon_cat.gltf + Mixamo walk FBX side by side
-2. **Copy Rotation constraints** (WORLD→WORLD space) from 20 Mixamo bones to corresponding Cartoon Cat bones
+2. **Copy Rotation constraints** (WORLD→WORLD space) from 19 Mixamo bones to corresponding Cartoon Cat bones (hands excluded — cat has different wrist structure)
 3. **Bake** the constrained animation, then **export as gltf** (Blender handles Z-up → Y-up conversion)
 4. **Inject into original gltf**: Python script extracts animation channels/samplers/accessors from the exported gltf and appends them to `cartoon_cat.gltf` + `.bin`
 5. **Channel filtering**: Only keeps channels that exist in the original 25 animations — filters out `_rootJoint` rotation (prevents 90° turn) and spurious scale/translation tracks from the bake

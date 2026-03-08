@@ -204,6 +204,10 @@ func _load_reference_model() -> void:
 		"Cat_SlowWalk": "res://ref_slow_walk.fbx",
 		"Cat_CoolWalk": "res://ref_cool_walk.fbx",
 		"Cat_Pacing": "res://ref_pacing.fbx",
+		"Cat_WindWalk1": "res://ref_wind_walk1.fbx",
+		"Cat_WindWalk2": "res://ref_wind_walk2.fbx",
+		"Cat_WindWalk3": "res://ref_wind_walk3.fbx",
+		"Cat_WindWalk4": "res://ref_wind_walk4.fbx",
 	}
 	for anim_name in ref_fbxs:
 		var ref_scene = load(ref_fbxs[anim_name])
