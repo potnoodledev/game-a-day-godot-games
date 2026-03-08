@@ -14,7 +14,13 @@ var particles_container: Node3D
 var current_scene_id: String = ""
 var _tween: Tween
 
+# Cached procedural textures (generated once)
+var _tex_soft_circle: ImageTexture
+var _tex_star: ImageTexture
+var _tex_petal: ImageTexture
+
 const TRANSITION_DURATION := 0.8
+const TEX_SIZE := 64
 
 func setup(we: WorldEnvironment, key: DirectionalLight3D,
 		fill: DirectionalLight3D, floor_node: MeshInstance3D) -> void:
@@ -27,6 +33,83 @@ func setup(we: WorldEnvironment, key: DirectionalLight3D,
 	particles_container = Node3D.new()
 	particles_container.name = "Particles"
 	get_parent().add_child(particles_container)
+	_generate_textures()
+
+# --- Procedural texture generation ---
+
+func _generate_textures() -> void:
+	_tex_soft_circle = _make_soft_circle()
+	_tex_star = _make_star()
+	_tex_petal = _make_petal()
+
+func _make_soft_circle() -> ImageTexture:
+	var img := Image.create(TEX_SIZE, TEX_SIZE, false, Image.FORMAT_RGBA8)
+	var center := Vector2(TEX_SIZE * 0.5, TEX_SIZE * 0.5)
+	var radius := TEX_SIZE * 0.5
+	for y in range(TEX_SIZE):
+		for x in range(TEX_SIZE):
+			var dist := Vector2(x + 0.5, y + 0.5).distance_to(center)
+			var t := clampf(1.0 - dist / radius, 0.0, 1.0)
+			# Smooth falloff: pow gives a soft glow
+			var alpha := t * t
+			img.set_pixel(x, y, Color(1, 1, 1, alpha))
+	return ImageTexture.create_from_image(img)
+
+func _make_star() -> ImageTexture:
+	var img := Image.create(TEX_SIZE, TEX_SIZE, false, Image.FORMAT_RGBA8)
+	var center := Vector2(TEX_SIZE * 0.5, TEX_SIZE * 0.5)
+	var radius := TEX_SIZE * 0.5
+	for y in range(TEX_SIZE):
+		for x in range(TEX_SIZE):
+			var pos := Vector2(x + 0.5, y + 0.5) - center
+			var dist := pos.length()
+			if dist < 0.01:
+				img.set_pixel(x, y, Color(1, 1, 1, 1))
+				continue
+			# 4-point star: use min of horizontal and vertical distances
+			var norm := pos / dist
+			# Cross-shaped brightness: bright along axes, dim diagonally
+			var ax := absf(norm.x)
+			var ay := absf(norm.y)
+			var cross := maxf(ax, ay)  # 1.0 on axes, ~0.7 diagonal
+			var star_factor := cross * cross * cross  # sharpen the star shape
+			var radial := clampf(1.0 - dist / radius, 0.0, 1.0)
+			var alpha := radial * radial * star_factor
+			# Add a soft core
+			var core := clampf(1.0 - dist / (radius * 0.3), 0.0, 1.0)
+			alpha = maxf(alpha, core * core)
+			img.set_pixel(x, y, Color(1, 1, 1, clampf(alpha, 0.0, 1.0)))
+	return ImageTexture.create_from_image(img)
+
+func _make_petal() -> ImageTexture:
+	var img := Image.create(TEX_SIZE, TEX_SIZE, false, Image.FORMAT_RGBA8)
+	var center := Vector2(TEX_SIZE * 0.5, TEX_SIZE * 0.5)
+	# Elongated ellipse: wider on X, narrower on Y
+	var rx := TEX_SIZE * 0.5
+	var ry := TEX_SIZE * 0.35
+	for y in range(TEX_SIZE):
+		for x in range(TEX_SIZE):
+			var dx := (x + 0.5 - center.x) / rx
+			var dy := (y + 0.5 - center.y) / ry
+			var dist := sqrt(dx * dx + dy * dy)
+			var t := clampf(1.0 - dist, 0.0, 1.0)
+			# Slightly asymmetric: shift brightness off-center
+			var shift := clampf(1.0 - absf(dx - 0.15) * 1.5, 0.3, 1.0)
+			var alpha := t * t * shift
+			img.set_pixel(x, y, Color(1, 1, 1, alpha))
+	return ImageTexture.create_from_image(img)
+
+func _get_texture_for_type(particle_type: String) -> ImageTexture:
+	match particle_type:
+		"sparkles":
+			return _tex_star
+		"petals":
+			return _tex_petal
+		_:
+			# snow, fireflies, embers all use soft circle
+			return _tex_soft_circle
+
+# --- Scene application ---
 
 func apply_scene(scene_id: String, animate: bool = true) -> void:
 	var data := SceneRegistry.get_scene(scene_id)
@@ -65,7 +148,6 @@ func _apply_lighting(data: Dictionary, dur: float) -> void:
 		fill_light.rotation_degrees = data["fill_light_rotation"]
 		environment.ambient_light_energy = data["ambient_energy"]
 		return
-	# Reuse existing tween (set_parallel)
 	_tween.tween_property(key_light, "light_color", data["key_light_color"], dur)
 	_tween.tween_property(key_light, "light_energy", data["key_light_energy"], dur)
 	_tween.tween_property(key_light, "rotation_degrees", data["key_light_rotation"], dur)
@@ -82,7 +164,6 @@ func _apply_floor(data: Dictionary) -> void:
 	floor_mesh.material_override = mat
 
 func _apply_post_processing(data: Dictionary, dur: float) -> void:
-	# Instant toggles
 	environment.ssao_enabled = data["ssao_enabled"]
 	environment.glow_enabled = data["glow_enabled"]
 	environment.fog_enabled = data["fog_enabled"]
@@ -105,7 +186,6 @@ func _apply_post_processing(data: Dictionary, dur: float) -> void:
 		environment.fog_density = 0.0
 
 func _apply_particles(data: Dictionary) -> void:
-	# Clear existing particles
 	for child in particles_container.get_children():
 		child.queue_free()
 
@@ -114,7 +194,6 @@ func _apply_particles(data: Dictionary) -> void:
 		_spawn_particles(cfg)
 
 func _spawn_particles(cfg: Dictionary) -> void:
-	# Use CPUParticles3D for WebGL compatibility
 	var p := CPUParticles3D.new()
 	p.emitting = true
 	p.amount = cfg.get("count", 50)
@@ -124,8 +203,7 @@ func _spawn_particles(cfg: Dictionary) -> void:
 	p.randomness = 0.5
 
 	# Position
-	var offset: Vector3 = cfg.get("emission_offset", Vector3.ZERO)
-	p.position = offset
+	p.position = cfg.get("emission_offset", Vector3.ZERO)
 
 	# Emission shape
 	var shape: String = cfg.get("emission_shape", "sphere")
@@ -140,14 +218,13 @@ func _spawn_particles(cfg: Dictionary) -> void:
 			p.emission_shape = CPUParticles3D.EMISSION_SHAPE_POINT
 
 	# Direction and velocity
-	var dir: Vector3 = cfg.get("direction", Vector3(0, -1, 0))
-	p.direction = dir
-	p.spread = 30.0
+	p.direction = cfg.get("direction", Vector3(0, -1, 0))
+	p.spread = cfg.get("spread", 30.0)
 	p.initial_velocity_min = cfg.get("velocity_min", 0.5)
 	p.initial_velocity_max = cfg.get("velocity_max", 1.0)
 	p.gravity = cfg.get("gravity", Vector3(0, -1, 0))
 
-	# Appearance
+	# Color ramp
 	var color_start: Color = cfg.get("color", Color.WHITE)
 	var color_end: Color = cfg.get("color_end", Color(1, 1, 1, 0))
 	var gradient := Gradient.new()
@@ -155,18 +232,24 @@ func _spawn_particles(cfg: Dictionary) -> void:
 	gradient.set_color(1, color_end)
 	p.color_ramp = gradient
 
+	# Scale
 	p.scale_amount_min = cfg.get("scale_min", 0.02)
 	p.scale_amount_max = cfg.get("scale_max", 0.04)
 
-	# Use simple billboard quad mesh with unshaded material
+	# Textured billboard quad
+	var particle_type: String = cfg.get("type", "")
+	var tex := _get_texture_for_type(particle_type)
+
 	var mesh := QuadMesh.new()
 	mesh.size = Vector2(0.1, 0.1)
 	var mat := StandardMaterial3D.new()
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.no_depth_test = true
 	mat.vertex_color_use_as_albedo = true
 	mat.albedo_color = Color(1, 1, 1, 1)
+	mat.albedo_texture = tex
 	mesh.material = mat
 	p.mesh = mesh
 
