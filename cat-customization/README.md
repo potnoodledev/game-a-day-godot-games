@@ -103,6 +103,9 @@ The script handles everything: Blender retarget (WORLD space), gltf export, chan
 5. **Channel filtering**: Only keeps channels that exist in the original 25 animations — filters out `_rootJoint` rotation (prevents 90° turn) and spurious scale/translation tracks from the bake
 
 ### Bone Mapping (Mixamo → Cartoon Cat)
+
+17 bones mapped. Excluded: Hips (90° turn), Shoulders (squishes torso), Hands (broken wrists). Arms are cross-mapped (Mixamo left → Cat right) due to mirrored rest orientations.
+
 | Mixamo | Cartoon Cat | Mixamo | Cartoon Cat |
 |--------|-------------|--------|-------------|
 | Spine | Bone1_01 | LeftUpLeg | Leg_Up_L_045 |
@@ -110,20 +113,22 @@ The script handles everything: Blender retarget (WORLD space), gltf export, chan
 | Spine2 | Bone3_03 | LeftFoot | Foot_L_047 |
 | Neck | Neack_04 | LeftToeBase | Foot_Dwn_L_048 |
 | Head | Head_05 | RightUpLeg | Leg_Up_R_049 |
-| LeftShoulder | Sholdier_L_024 | RightLeg | Leg_Dwn_R_050 |
-| LeftArm | Arm1_L_025 | RightFoot | Foot_R_051 |
-| LeftForeArm | Arm2_L_026 | RightToeBase | Foot_Dwn_R_052 |
-| LeftHand | h3_L_027 | RightShoulder | Sholdier_R_033 |
-| | | RightArm | Arm1_R_034 |
+| LeftArm | **Arm1_R_034** | RightLeg | Leg_Dwn_R_050 |
+| LeftForeArm | **Arm2_R_035** | RightFoot | Foot_R_051 |
+| RightArm | **Arm1_L_025** | RightToeBase | Foot_Dwn_R_052 |
+| RightForeArm | **Arm2_L_026** | | |
 
 ### Key Lessons
 - **LOCAL vs WORLD space**: Copy Rotation with LOCAL→LOCAL space produced wrong limb movements because the two skeletons have different bone axis orientations in rest pose. Switching to WORLD→WORLD fixed this — it transfers actual world orientation rather than raw local quaternions.
 - **Root bone filtering**: Blender's bake adds rotation/translation/scale tracks to ALL bones including root bones (`_rootJoint`, `const_all_00`). The root rotation caused a 90° turn. Fix: only inject channels that exist in the original animations.
 - **gltf injection vs re-export**: Re-exporting the full model through Blender broke meshes/materials. Instead, inject only the animation data (accessors, bufferViews, binary data) into the original gltf — keeps the model intact.
 - **Godot import cache**: After modifying a gltf, must delete both `.gltf.import` and `.godot/imported/cartoon_cat*` for Godot to reimport.
+- **Shoulders cause mesh tearing**: Mixamo's human shoulders are wide; the cat's are narrow. WORLD-space shoulder rotation squishes the torso and creates holes. Fix: exclude shoulders from mapping.
+- **Arms must be cross-mapped**: Mixamo Left → Cat Right and vice versa. The two skeletons have mirrored arm rest orientations, so same-side mapping produces swapped motion.
+- **Hands cause broken wrists**: The cat has different wrist bone structure than Mixamo. Excluding hands lets them stay in natural rest pose.
 
 ### Reference Models
-5 Mixamo walk FBX files are included as reference models (`ref_*.fbx`, `mixamo_walk_ref.fbx`). When selecting a retargeted Cat_ animation, the matching Mixamo mannequin appears beside the cat for side-by-side comparison.
+9 Mixamo walk FBX files are included as reference models (`ref_*.fbx`, `mixamo_walk_ref.fbx`). When selecting a retargeted Cat_ animation, the matching Mixamo mannequin appears beside the cat for side-by-side comparison.
 
 ## Scenes
 

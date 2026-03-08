@@ -33,19 +33,17 @@ BAK_GLTF = ORIG_GLTF + ".bak"
 BAK_BIN = ORIG_BIN + ".bak"
 
 # Mixamo -> Cartoon Cat bone mapping
-# Excludes Hips (causes 90-deg turn) and Hands (cat has different wrist structure)
+# Excludes Hips (causes 90-deg turn), Hands (different wrist), Shoulders (squishes torso)
 BONE_MAP = {
     "mixamorig:Spine": "Bone1_01",
     "mixamorig:Spine1": "Bone2_02",
     "mixamorig:Spine2": "Bone3_03",
     "mixamorig:Neck": "Neack_04",
     "mixamorig:Head": "Head_05",
-    "mixamorig:LeftShoulder": "Sholdier_L_024",
-    "mixamorig:LeftArm": "Arm1_L_025",
-    "mixamorig:LeftForeArm": "Arm2_L_026",
-    "mixamorig:RightShoulder": "Sholdier_R_033",
-    "mixamorig:RightArm": "Arm1_R_034",
-    "mixamorig:RightForeArm": "Arm2_R_035",
+    "mixamorig:LeftArm": "Arm1_R_034",
+    "mixamorig:LeftForeArm": "Arm2_R_035",
+    "mixamorig:RightArm": "Arm1_L_025",
+    "mixamorig:RightForeArm": "Arm2_L_026",
     "mixamorig:LeftUpLeg": "Leg_Up_L_045",
     "mixamorig:LeftLeg": "Leg_Dwn_L_046",
     "mixamorig:LeftFoot": "Foot_L_047",
