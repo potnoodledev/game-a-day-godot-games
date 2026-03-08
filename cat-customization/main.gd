@@ -10,17 +10,18 @@ var camera: Camera3D
 var skeleton: Skeleton3D
 var head_bone_idx := -1
 var click_label: Label
+var ref_models: Dictionary = {}  # anim_name -> {instance, anim_player}
+var current_ref_name := ""
 
 # Orbit camera
-var cam_distance := 1.8
+var cam_distance := 2.5
 var cam_angle_y := 0.0
 var cam_angle_x := -10.0
-var cam_target := Vector3(0, 0.5, 0)
+var cam_target := Vector3(0.8, 0.5, 0)
 
 # Animation state
 var current_anim := 0
 var anim_names: Array = []  # populated from model
-var anim_label: Label
 var anim_scrubber: HSlider
 var anim_paused := false
 var pause_check: CheckBox
@@ -88,6 +89,7 @@ func _ready() -> void:
 	_setup_camera()
 	_setup_floor()
 	_load_cat()
+	_load_reference_model()
 	_setup_ui()
 	_apply_primary(0)
 	_apply_stripe(0)
@@ -149,7 +151,7 @@ func _setup_floor() -> void:
 	plane.size = Vector2(5, 5)
 	floor_mesh.mesh = plane
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.85, 0.82, 0.78)
+	mat.albedo_color = Color(0.3, 0.35, 0.3)
 	mat.roughness = 0.9
 	floor_mesh.material_override = mat
 	add_child(floor_mesh)
@@ -181,9 +183,9 @@ func _load_cat() -> void:
 			var anim := anim_player.get_animation(anim_name)
 			if anim:
 				anim.loop_mode = Animation.LOOP_LINEAR
-		# Start on Arm_Idle
+		# Start on Cat_Walk for easy testing of retargeted anims
 		for i in range(anim_names.size()):
-			if anim_names[i] == "Arm_Idle":
+			if anim_names[i] == "Cat_Walk":
 				current_anim = i
 				break
 		_apply_anim()
@@ -194,6 +196,54 @@ func _load_cat() -> void:
 	# Find the eye mesh to enable color tinting
 	_find_eye_mesh(cat_instance)
 	print("[cat] Cat loaded successfully")
+
+func _load_reference_model() -> void:
+	var ref_fbxs := {
+		"Cat_Walk": "res://mixamo_walk_ref.fbx",
+		"Cat_HappyWalk": "res://ref_happy_walk.fbx",
+		"Cat_SlowWalk": "res://ref_slow_walk.fbx",
+		"Cat_CoolWalk": "res://ref_cool_walk.fbx",
+		"Cat_Pacing": "res://ref_pacing.fbx",
+	}
+	for anim_name in ref_fbxs:
+		var ref_scene = load(ref_fbxs[anim_name])
+		if not ref_scene:
+			print("[ref] Could not load ", ref_fbxs[anim_name])
+			continue
+		var inst: Node3D = ref_scene.instantiate()
+		inst.name = "Ref_" + anim_name
+		inst.position = Vector3(1.0, 0, 0)
+		inst.scale = Vector3(0.5, 0.5, 0.5)
+		inst.visible = false
+		add_child(inst)
+		var ap: AnimationPlayer = _find_node_by_class(inst, "AnimationPlayer")
+		if ap:
+			for a_name in ap.get_animation_list():
+				var a := ap.get_animation(a_name)
+				if a:
+					a.loop_mode = Animation.LOOP_LINEAR
+		ref_models[anim_name] = {"instance": inst, "anim_player": ap}
+		print("[ref] Loaded reference: ", anim_name)
+	_show_ref_for_anim(anim_names[current_anim] if anim_names.size() > 0 else "")
+
+func _show_ref_for_anim(anim_name: String) -> void:
+	# Hide all refs
+	for key in ref_models:
+		ref_models[key]["instance"].visible = false
+		var ap: AnimationPlayer = ref_models[key]["anim_player"]
+		if ap:
+			ap.stop()
+	current_ref_name = ""
+	# Show matching ref if it exists
+	if ref_models.has(anim_name):
+		var data: Dictionary = ref_models[anim_name]
+		data["instance"].visible = true
+		current_ref_name = anim_name
+		var ap: AnimationPlayer = data["anim_player"]
+		if ap:
+			var ref_anims := ap.get_animation_list()
+			if ref_anims.size() > 0:
+				ap.play(ref_anims[0])
 
 func _setup_fur_shader(root: Node) -> void:
 	# Create a shared fur recolor shader material
@@ -329,13 +379,17 @@ func _setup_ui() -> void:
 		ui_container.add_child(btn)
 	_update_eye_swatch_borders()
 
-	# Animation controls (after eye swatches on row 3)
+	# Animation dropdown
 	_add_label("Anim:", Vector2(430, row3_y + 4), ui_container)
-	var start_anim_name: String = anim_names[current_anim] if anim_names.size() > 0 else "none"
-	anim_label = _add_label(start_anim_name, Vector2(500, row3_y + 4), ui_container)
-	anim_label.add_theme_color_override("font_color", Color(0.6, 0.9, 1.0))
-	_add_button("<", Vector2(600, row3_y), Vector2(36, 30), ui_container, _prev_anim)
-	_add_button(">", Vector2(640, row3_y), Vector2(36, 30), ui_container, _next_anim)
+	var anim_dropdown := OptionButton.new()
+	anim_dropdown.position = Vector2(500, row3_y)
+	anim_dropdown.size = Vector2(220, 30)
+	anim_dropdown.add_theme_font_size_override("font_size", 14)
+	for i in range(anim_names.size()):
+		anim_dropdown.add_item(anim_names[i], i)
+	anim_dropdown.selected = current_anim
+	anim_dropdown.item_selected.connect(_on_anim_selected)
+	ui_container.add_child(anim_dropdown)
 
 	# Animation scrubber + pause (row below row3)
 	var row4_y := row3_y + 38.0
@@ -496,16 +550,8 @@ func _apply_eyes() -> void:
 		mat.set_shader_parameter("iris_color", Vector3(ec.r, ec.g, ec.b))
 		print("[cat] Iris color set to: ", ec)
 
-func _next_anim() -> void:
-	if anim_names.size() == 0:
-		return
-	current_anim = (current_anim + 1) % anim_names.size()
-	_apply_anim()
-
-func _prev_anim() -> void:
-	if anim_names.size() == 0:
-		return
-	current_anim = (current_anim - 1 + anim_names.size()) % anim_names.size()
+func _on_anim_selected(idx: int) -> void:
+	current_anim = idx
 	_apply_anim()
 
 func _apply_anim() -> void:
@@ -514,9 +560,7 @@ func _apply_anim() -> void:
 	var anim_name: String = anim_names[current_anim]
 	anim_player.play(anim_name)
 	anim_player.speed_scale = 0.0 if anim_paused else 1.0
-
-	if anim_label:
-		anim_label.text = anim_name
+	_show_ref_for_anim(anim_name)
 
 func _on_pause_toggled(pressed: bool) -> void:
 	anim_paused = pressed
@@ -642,3 +686,5 @@ func _input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			cam_distance = min(6.0, cam_distance + 0.1)
 			_update_camera()
+
+

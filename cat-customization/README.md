@@ -27,7 +27,7 @@ A real-time cat customizer built in Godot 4.6.1. Features procedural fur pattern
 | Our Cat | 1 | No | run |
 | Somali Cat | 5 | No | Idle, SitDown, SittingIdle, StandUp, WalkClean |
 | Black Cat | 4 | No | Idle, Run, SlowWalk, Walk |
-| Cartoon Cat | 25 | **Yes** | Sword (Idle/Light/Medium/Hight/End), Pistol (Idle/Light/Medium/Hight/End), Arm (Idle/Light/Medium/Hight/End), Hit/Death per weapon type, 4 idle variations |
+| Cartoon Cat | 30 | **Yes** | Sword (Idle/Light/Medium/Hight/End), Pistol (Idle/Light/Medium/Hight/End), Arm (Idle/Light/Medium/Hight/End), Hit/Death per weapon type, 4 idle variations, **5 retargeted walks** (Walk, HappyWalk, SlowWalk, CoolWalk, Pacing) |
 | Little Cat | 10 | No | TPose, Idle, Walk, Run, Jump, Greeting, Eat, Sleep x3 |
 
 ## Body Customization (Bone Scaling)
@@ -70,6 +70,45 @@ All slider ranges are symmetric around 0.5 so the midpoint (0.5) maps to scale 1
 **Problem**: Clicking a primary color swatch also changed the stripe color (and vice versa).
 **Root cause**: Both rows shared the same `_apply_preset(i)` function which set both primary and secondary colors from a paired array.
 **Fix**: Separate into independent `primary_colors`/`stripe_colors` arrays with dedicated `_apply_primary()`/`_apply_stripe()` functions.
+
+## Animation Retargeting Pipeline
+
+Added 5 walk/locomotion animations to the Cartoon Cat model (which only had combat/idle anims) by retargeting Rokoko free mocap data through Blender.
+
+### Source Data
+- **Rokoko Free Walk/Run Cycles** (CC0 license): 16 walk/run animations in FBX format
+- 9 use the Mixamo skeleton (compatible), 7 use Rokoko's own skeleton (incompatible)
+- Selected 5 diverse walks: WalkCycle, HappyWalk, SlowWalk, CoolWalk, Pacing
+
+### Retarget Process
+1. **Blender constraint-based retarget**: Import cartoon_cat.gltf + Mixamo walk FBX side by side
+2. **Copy Rotation constraints** (WORLD→WORLD space) from 20 Mixamo bones to corresponding Cartoon Cat bones
+3. **Bake** the constrained animation, then **export as gltf** (Blender handles Z-up → Y-up conversion)
+4. **Inject into original gltf**: Python script extracts animation channels/samplers/accessors from the exported gltf and appends them to `cartoon_cat.gltf` + `.bin`
+5. **Channel filtering**: Only keeps channels that exist in the original 25 animations — filters out `_rootJoint` rotation (prevents 90° turn) and spurious scale/translation tracks from the bake
+
+### Bone Mapping (Mixamo → Cartoon Cat)
+| Mixamo | Cartoon Cat | Mixamo | Cartoon Cat |
+|--------|-------------|--------|-------------|
+| Spine | Bone1_01 | LeftUpLeg | Leg_Up_L_045 |
+| Spine1 | Bone2_02 | LeftLeg | Leg_Dwn_L_046 |
+| Spine2 | Bone3_03 | LeftFoot | Foot_L_047 |
+| Neck | Neack_04 | LeftToeBase | Foot_Dwn_L_048 |
+| Head | Head_05 | RightUpLeg | Leg_Up_R_049 |
+| LeftShoulder | Sholdier_L_024 | RightLeg | Leg_Dwn_R_050 |
+| LeftArm | Arm1_L_025 | RightFoot | Foot_R_051 |
+| LeftForeArm | Arm2_L_026 | RightToeBase | Foot_Dwn_R_052 |
+| LeftHand | h3_L_027 | RightShoulder | Sholdier_R_033 |
+| | | RightArm | Arm1_R_034 |
+
+### Key Lessons
+- **LOCAL vs WORLD space**: Copy Rotation with LOCAL→LOCAL space produced wrong limb movements because the two skeletons have different bone axis orientations in rest pose. Switching to WORLD→WORLD fixed this — it transfers actual world orientation rather than raw local quaternions.
+- **Root bone filtering**: Blender's bake adds rotation/translation/scale tracks to ALL bones including root bones (`_rootJoint`, `const_all_00`). The root rotation caused a 90° turn. Fix: only inject channels that exist in the original animations.
+- **gltf injection vs re-export**: Re-exporting the full model through Blender broke meshes/materials. Instead, inject only the animation data (accessors, bufferViews, binary data) into the original gltf — keeps the model intact.
+- **Godot import cache**: After modifying a gltf, must delete both `.gltf.import` and `.godot/imported/cartoon_cat*` for Godot to reimport.
+
+### Reference Models
+5 Mixamo walk FBX files are included as reference models (`ref_*.fbx`, `mixamo_walk_ref.fbx`). When selecting a retargeted Cat_ animation, the matching Mixamo mannequin appears beside the cat for side-by-side comparison.
 
 ## Scenes
 
