@@ -1,156 +1,82 @@
 {
-  "wizard_hat": {
-    "file": "wizard_hat.glb",
-    "display_name": "Stylized wizard hat",
-    "offset": [
-      0.0,
-      0.08,
-      0.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "source_uid": "f59021d602334367987bcd7657cec722",
+  "gentleman_hat": {
+    "file": "gentleman_hat.glb",
+    "display_name": "Gentleman Hat",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
     "license": "CC Attribution",
-    "author": "Enkarra"
+    "author": "Zekirak"
+  },
+  "irish_hat": {
+    "file": "irish_hat.glb",
+    "display_name": "Irish Hat",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
+    "license": "CC Attribution",
+    "author": "Zekirak"
+  },
+  "monk_hat": {
+    "file": "monk_hat.glb",
+    "display_name": "Monk Hat",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
+    "license": "CC Attribution",
+    "author": "Zekirak"
   },
   "pirate_hat": {
     "file": "pirate_hat.glb",
-    "display_name": "Tricorn hat lowpoly",
-    "offset": [
-      0.0,
-      0.08,
-      0.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "source_uid": "ac0ecde570ba49c9adecd0b6820a84c0",
+    "display_name": "Pirate Hat",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
     "license": "CC Attribution",
-    "author": "Aartee"
+    "author": "Zekirak"
   },
-  "cowboy_hat": {
-    "file": "cowboy_hat.glb",
-    "display_name": "Cowboy Hat (Free)",
-    "offset": [
-      0.0,
-      0.08,
-      0.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "source_uid": "bd968c68d7b74629a7e062af0842082b",
+  "pope_hat": {
+    "file": "pope_hat.glb",
+    "display_name": "Pope Hat",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
     "license": "CC Attribution",
-    "author": "wolfgar74"
-  },
-  "crown": {
-    "file": "crown.glb",
-    "display_name": "Golden crown",
-    "offset": [
-      0.0,
-      0.08,
-      0.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "source_uid": "5689a9525a2c425d93f7d483b93d8cfa",
-    "license": "CC Attribution",
-    "author": "Pieter Ferreira"
-  },
-  "winter_hat": {
-    "file": "winter_hat.glb",
-    "display_name": "Winter Hat",
-    "offset": [
-      0.0,
-      0.08,
-      0.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "source_uid": "637a36cb74204c719883af7feb4b7c28",
-    "license": "CC Attribution",
-    "author": "StubbornFunkyDonkey"
-  },
-  "chef_hat": {
-    "file": "chef_hat.glb",
-    "display_name": "Chef Hat (Toon)",
-    "offset": [
-      0.0,
-      0.08,
-      0.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "source_uid": "0fe884ae9a734e22b6d1eb41127f1cc6",
-    "license": "CC Attribution",
-    "author": "shimtimultimedia"
+    "author": "Zekirak"
   },
   "viking_helmet": {
     "file": "viking_helmet.glb",
     "display_name": "Viking Helmet",
-    "offset": [
-      0.0,
-      0.08,
-      0.0
-    ],
-    "rotation": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "scale": [
-      1.0,
-      1.0,
-      1.0
-    ],
-    "source_uid": "cc2eeb3748ca486a8a97b4a55fba5658",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
     "license": "CC Attribution",
-    "author": "Chuwakcz"
+    "author": "Zekirak"
+  },
+  "winter_hat": {
+    "file": "winter_hat.glb",
+    "display_name": "Winter Hat",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
+    "license": "CC Attribution",
+    "author": "Zekirak"
+  },
+  "wizard_hat": {
+    "file": "wizard_hat.glb",
+    "display_name": "Wizard Hat",
+    "offset": [0.0, 0.28, -0.07],
+    "rotation": [0.0, 270.0, 0.0],
+    "scale": [1.2, 1.2, 1.2],
+    "source_uid": "8a89b7ab9b6e4bbcb078fb35b8bbec6b",
+    "license": "CC Attribution",
+    "author": "Zekirak"
   }
 }

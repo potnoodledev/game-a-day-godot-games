@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dlamyvri2t006"
-path="res://.godot/imported/viking_helmet.glb-9ec6e69b2d425ed91105968bd414bd34.scn"
+uid="uid://bnrpuayimjq62"
+path="res://.godot/imported/pope_hat.glb-4b0a78dd8866462a65296fc8004a4ac0.scn"
 
 [deps]
 
-source_file="res://hats/viking_helmet.glb"
-dest_files=["res://.godot/imported/viking_helmet.glb-9ec6e69b2d425ed91105968bd414bd34.scn"]
+source_file="res://hats/pope_hat.glb"
+dest_files=["res://.godot/imported/pope_hat.glb-4b0a78dd8866462a65296fc8004a4ac0.scn"]
 
 [params]
 

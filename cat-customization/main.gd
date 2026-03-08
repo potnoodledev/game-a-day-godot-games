@@ -84,6 +84,7 @@ func _connect_bridge() -> void:
 	bridge.weapon_changed.connect(_on_set_weapon)
 	bridge.hat_changed.connect(_on_set_hat)
 	bridge.camera_target_changed.connect(_on_set_camera_target)
+	bridge.hat_transform_changed.connect(_on_set_hat_transform)
 	# Publish lists to JS
 	bridge.publish_animations(anim_names)
 	bridge.publish_scenes(SceneRegistryScript.get_scene_ids())
@@ -407,6 +408,14 @@ func _on_set_camera(distance: float, angle_y: float, angle_x: float) -> void:
 	cam_angle_x = angle_x
 	auto_rotate = false
 	_update_camera()
+
+func _on_set_hat_transform(offset_y: float, offset_z: float, rotation_y: float, hat_scale: float) -> void:
+	if not current_hat_node:
+		return
+	current_hat_node.position = Vector3(0.0, offset_y, offset_z)
+	current_hat_node.rotation_degrees = Vector3(0.0, rotation_y, 0.0)
+	current_hat_node.scale = Vector3(hat_scale, hat_scale, hat_scale)
+	print("[hat] offset_y=", offset_y, " offset_z=", offset_z, " rot_y=", rotation_y, " scale=", hat_scale)
 
 func _on_set_camera_target(x: float, y: float, z: float) -> void:
 	cam_target = Vector3(x, y, z)

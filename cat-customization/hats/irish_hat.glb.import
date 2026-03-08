@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://dlamyvri2t006"
-path="res://.godot/imported/viking_helmet.glb-9ec6e69b2d425ed91105968bd414bd34.scn"
+uid="uid://dx3lgwtdikxy1"
+path="res://.godot/imported/irish_hat.glb-f7268ae0436f10e160a14a2a5be9773d.scn"
 
 [deps]
 
-source_file="res://hats/viking_helmet.glb"
-dest_files=["res://.godot/imported/viking_helmet.glb-9ec6e69b2d425ed91105968bd414bd34.scn"]
+source_file="res://hats/irish_hat.glb"
+dest_files=["res://.godot/imported/irish_hat.glb-f7268ae0436f10e160a14a2a5be9773d.scn"]
 
 [params]
 

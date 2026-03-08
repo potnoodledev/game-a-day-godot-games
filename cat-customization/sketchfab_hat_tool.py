@@ -39,9 +39,13 @@ REGISTRY_FILE = os.path.join(HATS_DIR, "hat_registry.json")
 ENV_FILE = os.path.join(PROJECT_DIR, ".env")
 BLENDER = os.path.expanduser("~/projects/game-a-day/apps/blender/blender")
 
-# Target hat height in Blender units (cat is scaled 0.25x in Godot,
-# head is roughly 0.8 units in model space)
-TARGET_HEIGHT = 0.4
+# Target hat size in Blender units.
+# The cat is scaled 0.25x in Godot; head is roughly 0.8 units in model space.
+# We scale so the largest dimension (width or height) fits TARGET_MAX_DIM.
+TARGET_MAX_DIM = 0.4
+MAX_FACES = 2000       # Decimate meshes above this threshold
+MAX_TEX_SIZE = 128     # Texture resolution cap (128x128 is plenty for hats)
+STRIP_PBR = True       # Remove normal/metallic/roughness maps for smaller GLBs
 
 
 def get_token():
@@ -197,7 +201,7 @@ def cmd_download(args):
     registry[hat_name] = {
         "file": f"{hat_name}.glb",
         "display_name": model_name[:30],
-        "offset": [0.0, 0.08, 0.0],
+        "offset": [0.0, 0.35, 0.0],
         "rotation": [0.0, 0.0, 0.0],
         "scale": [1.0, 1.0, 1.0],
         "source_uid": uid,
@@ -209,9 +213,8 @@ def cmd_download(args):
 
 
 def _normalize_hat(input_file, output_glb, tmp_dir):
-    """Run Blender to normalize hat: center origin, scale, orient, export as GLB."""
-    is_glb = input_file.endswith(".glb")
-    import_op = "bpy.ops.import_scene.gltf" if not is_glb else "bpy.ops.import_scene.gltf"
+    """Run Blender to normalize hat: center, orient front along -Y, uniform scale,
+    decimate, compress textures, strip PBR maps, export as GLB."""
 
     script = f'''
 import bpy
@@ -232,13 +235,11 @@ if not meshes:
     print("NORMALIZE_FAIL: No meshes found")
     raise SystemExit(1)
 
-# Select all meshes
+# Select all meshes and join
 bpy.ops.object.select_all(action='DESELECT')
 for obj in meshes:
     obj.select_set(True)
 bpy.context.view_layer.objects.active = meshes[0]
-
-# Join into one mesh
 if len(meshes) > 1:
     bpy.ops.object.join()
 
@@ -247,30 +248,76 @@ obj = bpy.context.active_object
 # Apply all transforms
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 
-# Set origin to bottom-center of bounding box
+# --- Center origin to bottom-center of bounding box ---
 bbox = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-min_y = min(v.z for v in bbox)  # Z is up in Blender
+min_z = min(v.z for v in bbox)
 center_x = sum(v.x for v in bbox) / 8
 center_y = sum(v.y for v in bbox) / 8
-
-# Move geometry so origin is at bottom-center
-offset = mathutils.Vector((-center_x, -center_y, -min_y))
+offset = mathutils.Vector((-center_x, -center_y, -min_z))
 obj.data.transform(mathutils.Matrix.Translation(offset))
 obj.location = (0, 0, 0)
 
-# Scale to target height
+# --- Scale to fit TARGET_MAX_DIM on the largest axis ---
 bbox2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-height = max(v.z for v in bbox2) - min(v.z for v in bbox2)
-if height > 0:
-    scale_factor = {TARGET_HEIGHT} / height
+size_x = max(v.x for v in bbox2) - min(v.x for v in bbox2)
+size_y = max(v.y for v in bbox2) - min(v.y for v in bbox2)
+size_z = max(v.z for v in bbox2) - min(v.z for v in bbox2)
+max_dim = max(size_x, size_y, size_z)
+if max_dim > 0:
+    scale_factor = {TARGET_MAX_DIM} / max_dim
     obj.scale = (scale_factor, scale_factor, scale_factor)
     bpy.ops.object.transform_apply(scale=True)
+print(f"  Dims before scale: {{size_x:.3f}} x {{size_y:.3f}} x {{size_z:.3f}}, max={{max_dim:.3f}}")
 
-# Clear rotation
-obj.rotation_euler = (0, 0, 0)
+# --- Decimate if too many faces ---
+face_count = len(obj.data.polygons)
+if face_count > {MAX_FACES}:
+    ratio = {MAX_FACES} / face_count
+    mod = obj.modifiers.new("Decimate", 'DECIMATE')
+    mod.ratio = ratio
+    bpy.ops.object.modifier_apply(modifier="Decimate")
+    new_count = len(obj.data.polygons)
+    print(f"  Decimated: {{face_count}} -> {{new_count}} faces")
+else:
+    print(f"  Faces: {{face_count}} (OK)")
 
-# Resize all textures to max 256x256 to keep GLB small
-MAX_TEX = 256
+# --- Strip PBR maps (normal, metallic/roughness) for smaller GLBs ---
+strip_pbr = {STRIP_PBR}
+if strip_pbr:
+    for mat in bpy.data.materials:
+        if not mat.node_tree:
+            continue
+        bsdf = None
+        for node in mat.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED':
+                bsdf = node
+                break
+        if not bsdf:
+            continue
+        # Disconnect normal map
+        normal_input = bsdf.inputs.get("Normal")
+        if normal_input and normal_input.is_linked:
+            for link in normal_input.links:
+                mat.node_tree.links.remove(link)
+        # Set metallic to 0, roughness to 0.8 (stylized look)
+        metallic_input = bsdf.inputs.get("Metallic")
+        if metallic_input:
+            if metallic_input.is_linked:
+                for link in metallic_input.links:
+                    mat.node_tree.links.remove(link)
+            metallic_input.default_value = 0.0
+        roughness_input = bsdf.inputs.get("Roughness")
+        if roughness_input:
+            if roughness_input.is_linked:
+                for link in roughness_input.links:
+                    mat.node_tree.links.remove(link)
+            roughness_input.default_value = 0.8
+    # Remove orphan images that are no longer connected
+    # (they won't be exported since nothing references them)
+    print("  Stripped PBR maps (normal/metallic/roughness)")
+
+# --- Resize remaining textures ---
+MAX_TEX = {MAX_TEX_SIZE}
 for img in bpy.data.images:
     if img.size[0] > MAX_TEX or img.size[1] > MAX_TEX:
         ratio = min(MAX_TEX / img.size[0], MAX_TEX / img.size[1])
@@ -288,6 +335,11 @@ bpy.ops.export_scene.gltf(
     export_skins=False,
     export_yup=True,
 )
+
+# Report final size
+import os
+size_kb = os.path.getsize("{output_glb}") / 1024
+print(f"  Output: {{size_kb:.0f}} KB")
 print("NORMALIZE_OK")
 '''
     script_path = os.path.join(tmp_dir, "normalize_hat.py")
@@ -304,6 +356,11 @@ print("NORMALIZE_OK")
             for line in result.stderr.split("\n"):
                 if "Error" in line or "ERROR" in line:
                     print(f"  {line}")
+    else:
+        # Print normalize info lines
+        for line in result.stdout.split("\n"):
+            if line.strip().startswith("  "):
+                print(line)
 
 
 def cmd_list(args):
@@ -348,6 +405,100 @@ def cmd_adjust(args):
     print(f"  scale:    {info['scale']}")
 
 
+def cmd_renormalize(args):
+    """Re-run normalization on all existing hats (or a specific one)."""
+    registry = load_registry()
+    if not registry:
+        print("No hats in registry")
+        return
+
+    targets = [args.hat_id] if args.hat_id else sorted(registry.keys())
+    for hat_id in targets:
+        if hat_id not in registry:
+            print(f"Unknown hat: {hat_id}")
+            continue
+        info = registry[hat_id]
+        uid = info.get("source_uid")
+        if not uid:
+            print(f"  {hat_id}: no source_uid, skipping")
+            continue
+
+        glb_path = os.path.join(HATS_DIR, info["file"])
+        if not os.path.exists(glb_path):
+            print(f"  {hat_id}: GLB missing, skipping")
+            continue
+
+        print(f"\n  Renormalizing {hat_id}...")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            _normalize_hat(glb_path, glb_path, tmp_dir)
+
+        # Reset offset/rotation/scale to defaults since the hat is now properly oriented
+        info["offset"] = [0.0, 0.08, 0.0]
+        info["rotation"] = [0.0, 0.0, 0.0]
+        info["scale"] = [1.0, 1.0, 1.0]
+
+    save_registry(registry)
+    print(f"\nDone. Re-import in Godot:")
+    print(f"  rm -f .godot/imported/*hat*")
+    print(f"  godot --headless --editor --quit-after 10")
+
+
+def cmd_inspect(args):
+    """Show dimensions and stats for all hats (via Blender)."""
+    import json as _json
+    hats = sorted(f for f in os.listdir(HATS_DIR) if f.endswith(".glb"))
+    if not hats:
+        print("No hat GLBs found")
+        return
+
+    script = '''
+import bpy, json, os, mathutils
+hats_dir = "HATS_DIR_PLACEHOLDER"
+results = {}
+for f in sorted(os.listdir(hats_dir)):
+    if not f.endswith(".glb"): continue
+    name = f.replace(".glb","")
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=os.path.join(hats_dir, f))
+    meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+    if not meshes: continue
+    all_verts = []
+    for obj in meshes:
+        for v in obj.data.vertices:
+            all_verts.append(obj.matrix_world @ v.co)
+    xs = [v.x for v in all_verts]
+    ys = [v.y for v in all_verts]
+    zs = [v.z for v in all_verts]
+    faces = sum(len(o.data.polygons) for o in meshes)
+    verts = sum(len(o.data.vertices) for o in meshes)
+    file_kb = os.path.getsize(os.path.join(hats_dir, f)) / 1024
+    results[name] = {
+        "w": round(max(xs)-min(xs),3), "d": round(max(ys)-min(ys),3), "h": round(max(zs)-min(zs),3),
+        "faces": faces, "verts": verts, "kb": round(file_kb,1),
+    }
+print("INSPECT:" + json.dumps(results))
+'''.replace("HATS_DIR_PLACEHOLDER", HATS_DIR)
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        script_path = os.path.join(tmp_dir, "inspect.py")
+        with open(script_path, "w") as f:
+            f.write(script)
+        result = subprocess.run(
+            [BLENDER, "--background", "--python", script_path],
+            capture_output=True, text=True, timeout=120
+        )
+
+    for line in result.stdout.split("\n"):
+        if line.startswith("INSPECT:"):
+            data = _json.loads(line[8:])
+            print(f"\n{'Hat':<20} {'W':>6} {'D':>6} {'H':>6} {'Faces':>7} {'Verts':>7} {'Size':>8}")
+            print("-" * 68)
+            for name, info in sorted(data.items()):
+                print(f"{name:<20} {info['w']:>6.3f} {info['d']:>6.3f} {info['h']:>6.3f} {info['faces']:>7} {info['verts']:>7} {info['kb']:>6.1f}KB")
+            return
+    print("Blender inspection failed")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Sketchfab hat tool — search, download, normalize",
@@ -372,13 +523,19 @@ def main():
     p_adj.add_argument("--rotation", help="x,y,z rotation degrees (e.g. 0,90,0)")
     p_adj.add_argument("--scale", help="x,y,z scale or uniform (e.g. 1.5)")
 
+    p_renorm = sub.add_parser("renormalize", help="Re-normalize all hats (or one)")
+    p_renorm.add_argument("hat_id", nargs="?", help="Specific hat ID (default: all)")
+
+    p_inspect = sub.add_parser("inspect", help="Show hat dimensions and stats")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
         return
 
     {"search": cmd_search, "download": cmd_download,
-     "list": cmd_list, "adjust": cmd_adjust}[args.command](args)
+     "list": cmd_list, "adjust": cmd_adjust,
+     "renormalize": cmd_renormalize, "inspect": cmd_inspect}[args.command](args)
 
 
 if __name__ == "__main__":

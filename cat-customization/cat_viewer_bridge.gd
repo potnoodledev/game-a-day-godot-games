@@ -24,6 +24,7 @@ signal scene_changed(scene_id: String)
 signal weapon_changed(weapon_id: String)
 signal hat_changed(hat_id: String)
 signal camera_target_changed(x: float, y: float, z: float)
+signal hat_transform_changed(offset_y: float, offset_z: float, rotation_y: float, scale: float)
 
 var _poll_counter := 0
 var _js_available := false
@@ -168,6 +169,8 @@ func _dispatch_command(cmd: Dictionary) -> void:
 			hat_changed.emit(cmd["value"])
 		"set_camera_target":
 			camera_target_changed.emit(cmd["x"], cmd["y"], cmd["z"])
+		"set_hat_transform":
+			hat_transform_changed.emit(cmd["offset_y"], cmd["offset_z"], cmd["rotation_y"], cmd["scale"])
 
 ## Called by main.gd to publish animation list back to JS
 func publish_animations(names: Array) -> void:

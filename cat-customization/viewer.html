@@ -160,6 +160,27 @@ select {
   <div class="section">
     <div class="section-title">Hat</div>
     <select id="hat-select"><option value="none">None</option></select>
+    <button class="api-toggle" id="hat-adjust-toggle" style="margin-top:6px;border-top:none;font-size:10px;color:#666">
+      Adjust <span class="arrow">&#9654;</span>
+    </button>
+    <div id="hat-adjust" style="display:none">
+      <div class="slider-row" style="margin-top:6px">
+        <label>Y Offset <span id="hat-offset-val">0.28</span></label>
+        <input type="range" id="hat-offset-y" min="-0.5" max="1.5" step="0.01" value="0.28">
+      </div>
+      <div class="slider-row">
+        <label>Z Offset <span id="hat-offset-z-val">-0.07</span></label>
+        <input type="range" id="hat-offset-z" min="-0.5" max="0.5" step="0.01" value="-0.07">
+      </div>
+      <div class="slider-row">
+        <label>Rotation <span id="hat-rot-val">270</span></label>
+        <input type="range" id="hat-rot-y" min="0" max="360" step="1" value="270">
+      </div>
+      <div class="slider-row">
+        <label>Scale <span id="hat-scale-val">1.20</span></label>
+        <input type="range" id="hat-scale" min="0.1" max="3.0" step="0.01" value="1.2">
+      </div>
+    </div>
   </div>
 
   <div class="section">
@@ -487,7 +508,34 @@ document.getElementById('bone-head').addEventListener('input', (e) => catViewer.
 document.getElementById('bone-eye').addEventListener('input', (e) => catViewer.setBoneScale('eye_size', parseFloat(e.target.value)));
 document.getElementById('bone-body').addEventListener('input', (e) => catViewer.setBoneScale('body_width', parseFloat(e.target.value)));
 document.getElementById('bone-tail').addEventListener('input', (e) => catViewer.setBoneScale('tail_size', parseFloat(e.target.value)));
-document.getElementById('hat-select').addEventListener('change', (e) => catViewer.setHat(e.target.value));
+document.getElementById('hat-adjust-toggle').addEventListener('click', function() {
+  this.classList.toggle('open');
+  const panel = document.getElementById('hat-adjust');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('hat-select').addEventListener('change', (e) => {
+  catViewer.setHat(e.target.value);
+  // Apply current slider values to the new hat after a short delay
+  setTimeout(sendHatTransform, 100);
+});
+
+function sendHatTransform() {
+  const oy = parseFloat(document.getElementById('hat-offset-y').value);
+  const oz = parseFloat(document.getElementById('hat-offset-z').value);
+  const ry = parseFloat(document.getElementById('hat-rot-y').value);
+  const sc = parseFloat(document.getElementById('hat-scale').value);
+  document.getElementById('hat-offset-val').textContent = oy.toFixed(2);
+  document.getElementById('hat-offset-z-val').textContent = oz.toFixed(2);
+  document.getElementById('hat-rot-val').textContent = ry;
+  document.getElementById('hat-scale-val').textContent = sc.toFixed(2);
+  window._catCommands.push({cmd:'set_hat_transform', offset_y:oy, offset_z:oz, rotation_y:ry, scale:sc});
+  console.log(`[hat] offset_y=${oy} offset_z=${oz} rot_y=${ry} scale=${sc}`);
+}
+document.getElementById('hat-offset-y').addEventListener('input', sendHatTransform);
+document.getElementById('hat-offset-z').addEventListener('input', sendHatTransform);
+document.getElementById('hat-rot-y').addEventListener('input', sendHatTransform);
+document.getElementById('hat-scale').addEventListener('input', sendHatTransform);
 document.getElementById('weapon-select').addEventListener('change', (e) => catViewer.setWeapon(e.target.value));
 document.getElementById('scene-select').addEventListener('change', (e) => catViewer.setScene(e.target.value));
 document.getElementById('auto-rotate').addEventListener('change', (e) => catViewer.setAutoRotate(e.target.checked));
