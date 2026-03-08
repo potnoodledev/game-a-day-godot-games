@@ -13,6 +13,11 @@ var eye_mesh_node: MeshInstance3D
 var camera: Camera3D
 var skeleton: Skeleton3D
 
+# Weapons
+var sword_node: Node3D  # Parent Node3D containing the sword mesh
+var gun_node: Node3D    # Parent Node3D containing the gun mesh
+var current_weapon: String = "none"  # "none", "sword", "gun"
+
 # Environment nodes (stored for SceneManager)
 var world_env_node: WorldEnvironment
 var key_light_node: DirectionalLight3D
@@ -69,6 +74,7 @@ func _connect_bridge() -> void:
 	bridge.camera_changed.connect(_on_set_camera)
 	bridge.auto_rotate_changed.connect(_on_set_auto_rotate)
 	bridge.scene_changed.connect(_on_set_scene)
+	bridge.weapon_changed.connect(_on_set_weapon)
 	# Publish lists to JS
 	bridge.publish_animations(anim_names)
 	bridge.publish_scenes(SceneRegistryScript.get_scene_ids())
@@ -142,6 +148,7 @@ func _load_cat() -> void:
 	add_child(cat_instance)
 
 	_setup_fur_shader(cat_instance)
+	_find_weapon_nodes(cat_instance)
 	_remove_non_skinned_meshes(cat_instance)
 
 	anim_player = _find_node_by_class(cat_instance, "AnimationPlayer")
@@ -189,6 +196,25 @@ func _collect_body_meshes(node: Node) -> void:
 	for child in node.get_children():
 		_collect_body_meshes(child)
 
+func _find_weapon_nodes(root: Node) -> void:
+	sword_node = _find_node_by_name(root, "Weapon_Sword")
+	gun_node = _find_node_by_name(root, "Weapon_LapaGun")
+	if sword_node:
+		sword_node.visible = false
+		print("[cat] Found sword: ", sword_node.get_path())
+	if gun_node:
+		gun_node.visible = false
+		print("[cat] Found gun: ", gun_node.get_path())
+
+func _find_node_by_name(node: Node, target_name: String) -> Node:
+	if node.name == target_name:
+		return node
+	for child in node.get_children():
+		var result = _find_node_by_name(child, target_name)
+		if result:
+			return result
+	return null
+
 func _remove_non_skinned_meshes(node: Node) -> void:
 	var to_remove: Array[Node] = []
 	_collect_non_skinned(node, to_remove)
@@ -196,10 +222,21 @@ func _remove_non_skinned_meshes(node: Node) -> void:
 		n.get_parent().remove_child(n)
 		n.queue_free()
 
+func _is_under_bone_attachment(node: Node) -> bool:
+	var current = node.get_parent()
+	while current:
+		if current is BoneAttachment3D:
+			return true
+		if current is Skeleton3D:
+			return false
+		current = current.get_parent()
+	return false
+
 func _collect_non_skinned(node: Node, out: Array[Node]) -> void:
 	if node is MeshInstance3D and not (node.get_parent() is Skeleton3D):
-		out.append(node)
-		return
+		if not _is_under_bone_attachment(node):
+			out.append(node)
+			return
 	for child in node.get_children():
 		_collect_non_skinned(child, out)
 
@@ -238,9 +275,30 @@ func _on_set_animation(anim_name: String) -> void:
 		return
 	if anim_names.has(anim_name):
 		anim_player.play(anim_name)
+		_auto_weapon_for_animation(anim_name)
 		print("[cat] Animation: ", anim_name)
 	else:
 		print("[cat] Unknown animation: ", anim_name)
+
+func _auto_weapon_for_animation(anim_name: String) -> void:
+	if anim_name.begins_with("Sword_"):
+		_apply_weapon("sword")
+	elif anim_name.begins_with("Pistol_"):
+		_apply_weapon("gun")
+	elif anim_name.begins_with("Arm_"):
+		_apply_weapon("none")
+	# Cat_* and Idle_* animations: don't change weapon (let manual setting persist)
+
+func _on_set_weapon(weapon_id: String) -> void:
+	_apply_weapon(weapon_id)
+	print("[cat] Weapon: ", weapon_id)
+
+func _apply_weapon(weapon_id: String) -> void:
+	current_weapon = weapon_id
+	if sword_node:
+		sword_node.visible = (weapon_id == "sword")
+	if gun_node:
+		gun_node.visible = (weapon_id == "gun")
 
 func _apply_primary_color(color: Color) -> void:
 	if fur_shader_mat:

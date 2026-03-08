@@ -175,11 +175,11 @@ def retarget_fbx(fbx_path, anim_name, tmp_dir):
 
 
 def inject_animations(anim_gltfs):
-    """Inject animations from exported gltfs into the original cartoon_cat.gltf."""
-    # Restore from backup
-    shutil.copy2(BAK_GLTF, ORIG_GLTF)
-    shutil.copy2(BAK_BIN, ORIG_BIN)
+    """Inject animations from exported gltfs into cartoon_cat.gltf.
 
+    Works incrementally — adds/replaces animations in the current file
+    without touching existing ones. Uses the backup only for valid_channels reference.
+    """
     with open(ORIG_GLTF) as f:
         orig = json.load(f)
     with open(ORIG_BIN, "rb") as f:
@@ -190,14 +190,25 @@ def inject_animations(anim_gltfs):
         if "name" in node:
             orig_node_map[node["name"]] = i
 
-    # Build valid channels from original animations
+    # Build valid channels from backup (the clean original with all bone channels)
     valid_channels = set()
+    with open(BAK_GLTF) as f:
+        bak = json.load(f)
+    for anim in bak["animations"]:
+        for ch in anim["channels"]:
+            node_name = bak["nodes"][ch["target"]["node"]].get("name", "")
+            valid_channels.add((node_name, ch["target"]["path"]))
+
+    # Also include channels from current file (in case backup is outdated)
     for anim in orig["animations"]:
         for ch in anim["channels"]:
             node_name = orig["nodes"][ch["target"]["node"]].get("name", "")
             valid_channels.add((node_name, ch["target"]["path"]))
 
-    print(f"Original: {len(orig['animations'])} animations")
+    # Build map of existing animation names for replacement
+    existing_anim_names = {a["name"]: i for i, a in enumerate(orig["animations"])}
+
+    print(f"Current: {len(orig['animations'])} animations")
 
     for gltf_path, bin_path, anim_name in anim_gltfs:
         if not os.path.exists(gltf_path):
@@ -278,8 +289,14 @@ def inject_animations(anim_gltfs):
                 "target": {"node": orig_node_map[node_name], "path": ch["target"]["path"]}
             })
 
-        orig["animations"].append({"name": anim_name, "channels": new_channels, "samplers": new_samplers})
-        print(f"  {anim_name}: {len(new_channels)} channels")
+        new_anim = {"name": anim_name, "channels": new_channels, "samplers": new_samplers}
+        if anim_name in existing_anim_names:
+            # Replace existing animation (note: old accessor data remains but is harmless)
+            orig["animations"][existing_anim_names[anim_name]] = new_anim
+            print(f"  {anim_name}: {len(new_channels)} channels (replaced)")
+        else:
+            orig["animations"].append(new_anim)
+            print(f"  {anim_name}: {len(new_channels)} channels (added)")
 
     orig["buffers"][0]["byteLength"] = len(orig_bin)
     with open(ORIG_GLTF, "w") as f:

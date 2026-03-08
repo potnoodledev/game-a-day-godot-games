@@ -21,6 +21,7 @@ signal bone_scale_changed(name: String, value: float)
 signal camera_changed(distance: float, angle_y: float, angle_x: float)
 signal auto_rotate_changed(enabled: bool)
 signal scene_changed(scene_id: String)
+signal weapon_changed(weapon_id: String)
 
 var _poll_counter := 0
 var _js_available := false
@@ -74,6 +75,8 @@ func _emit_initial_config() -> void:
 		auto_rotate_changed.emit(cfg["auto_rotate"])
 	if cfg.has("scene"):
 		scene_changed.emit(cfg["scene"])
+	if cfg.has("weapon"):
+		weapon_changed.emit(cfg["weapon"])
 
 func _setup_js_bridge() -> void:
 	# Install the catViewer API and command queue on the JS side
@@ -91,6 +94,7 @@ func _setup_js_bridge() -> void:
 			setCamera: function(distance, angleY, angleX) { window._catCommands.push({cmd:'set_camera',distance:distance,angle_y:angleY,angle_x:angleX}); },
 			setAutoRotate: function(enabled) { window._catCommands.push({cmd:'set_auto_rotate',value:enabled}); },
 			setScene: function(id) { window._catCommands.push({cmd:'set_scene',value:id}); },
+			setWeapon: function(id) { window._catCommands.push({cmd:'set_weapon',value:id}); },
 			getAnimations: function() { return window._catAnimations || []; },
 			getScenes: function() { return window._catScenes || []; },
 			getConfig: function() { return window._catCurrentConfig || {}; },
@@ -152,6 +156,8 @@ func _dispatch_command(cmd: Dictionary) -> void:
 			auto_rotate_changed.emit(cmd["value"])
 		"set_scene":
 			scene_changed.emit(cmd["value"])
+		"set_weapon":
+			weapon_changed.emit(cmd["value"])
 
 ## Called by main.gd to publish animation list back to JS
 func publish_animations(names: Array) -> void:
