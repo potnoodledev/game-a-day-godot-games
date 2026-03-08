@@ -17,6 +17,9 @@ config/features=PackedStringArray("4.6")
 [autoload]
 
 
+Bridge="*res://cat_viewer_bridge.gd"
+
+
 
 
 
