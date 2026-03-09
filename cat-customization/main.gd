@@ -14,9 +14,14 @@ var camera: Camera3D
 var skeleton: Skeleton3D
 
 # Weapons
-var sword_node: Node3D  # Parent Node3D containing the sword mesh
-var gun_node: Node3D    # Parent Node3D containing the gun mesh
-var current_weapon: String = "none"  # "none", "sword", "gun"
+var sword_socket: Node3D  # h3_L_Swords_029 — grip socket for sword-type weapons
+var gun_socket: Node3D    # h3_L_Guns_030 — grip socket for gun-type weapons
+var builtin_sword: Node3D # Original Weapon_Sword (hidden, kept as fallback)
+var builtin_gun: Node3D   # Original Weapon_LapaGun (hidden, kept as fallback)
+var current_weapon: String = "none"
+var current_weapon_node: Node3D
+var weapon_registry: Dictionary = {}
+var weapon_ids: Array = []
 
 # Hats
 var hat_attachment: BoneAttachment3D
@@ -85,10 +90,13 @@ func _connect_bridge() -> void:
 	bridge.hat_changed.connect(_on_set_hat)
 	bridge.camera_target_changed.connect(_on_set_camera_target)
 	bridge.hat_transform_changed.connect(_on_set_hat_transform)
+	bridge.weapon_transform_changed.connect(_on_set_weapon_transform)
+	bridge.weapon_pick_grip.connect(_on_weapon_pick_grip)
 	# Publish lists to JS
 	bridge.publish_animations(anim_names)
 	bridge.publish_scenes(SceneRegistryScript.get_scene_ids())
 	bridge.publish_hats(hat_ids)
+	bridge.publish_weapons(weapon_ids)
 	print("[cat] Bridge connected")
 
 # --- Environment ---
@@ -210,14 +218,18 @@ func _collect_body_meshes(node: Node) -> void:
 		_collect_body_meshes(child)
 
 func _find_weapon_nodes(root: Node) -> void:
-	sword_node = _find_node_by_name(root, "Weapon_Sword")
-	gun_node = _find_node_by_name(root, "Weapon_LapaGun")
-	if sword_node:
-		sword_node.visible = false
-		print("[cat] Found sword: ", sword_node.get_path())
-	if gun_node:
-		gun_node.visible = false
-		print("[cat] Found gun: ", gun_node.get_path())
+	# Find the grip sockets (parent nodes of the built-in weapons)
+	builtin_sword = _find_node_by_name(root, "Weapon_Sword")
+	builtin_gun = _find_node_by_name(root, "Weapon_LapaGun")
+	if builtin_sword:
+		sword_socket = builtin_sword.get_parent()
+		builtin_sword.visible = false
+		print("[cat] Sword socket: ", sword_socket.name)
+	if builtin_gun:
+		gun_socket = builtin_gun.get_parent()
+		builtin_gun.visible = false
+		print("[cat] Gun socket: ", gun_socket.name)
+	_load_weapon_registry()
 
 func _find_node_by_name(node: Node, target_name: String) -> Node:
 	if node.name == target_name:
@@ -289,7 +301,7 @@ func _load_hat_registry() -> void:
 		print("[cat] No hat registry found")
 		return
 	var file := FileAccess.open(path, FileAccess.READ)
-	var json := JSON.parse_string(file.get_as_text())
+	var json = JSON.parse_string(file.get_as_text())
 	if json is Dictionary:
 		hat_registry = json
 		hat_ids = ["none"] + Array(hat_registry.keys())
@@ -362,25 +374,97 @@ func _on_set_animation(anim_name: String) -> void:
 	else:
 		print("[cat] Unknown animation: ", anim_name)
 
-func _auto_weapon_for_animation(anim_name: String) -> void:
-	if anim_name.begins_with("Sword_"):
-		_apply_weapon("sword")
-	elif anim_name.begins_with("Pistol_"):
-		_apply_weapon("gun")
-	elif anim_name.begins_with("Arm_"):
-		_apply_weapon("none")
-	# Cat_* and Idle_* animations: don't change weapon (let manual setting persist)
+func _auto_weapon_for_animation(_anim_name: String) -> void:
+	# Don't auto-switch weapons — let the user's manual selection persist.
+	# The bone scale animation handles showing/hiding the socket automatically.
+	pass
+
+func _load_weapon_registry() -> void:
+	var path := "res://weapons/weapon_registry.json"
+	if not FileAccess.file_exists(path):
+		print("[cat] No weapon registry found, using built-in weapons")
+		weapon_ids = ["none", "sword", "gun"]
+		return
+	var file := FileAccess.open(path, FileAccess.READ)
+	var json = JSON.parse_string(file.get_as_text())
+	if json is Dictionary:
+		weapon_registry = json
+		weapon_ids = ["none"]
+		for key in weapon_registry.keys():
+			weapon_ids.append(key)
+		print("[cat] Loaded ", weapon_registry.size(), " weapons")
 
 func _on_set_weapon(weapon_id: String) -> void:
 	_apply_weapon(weapon_id)
 	print("[cat] Weapon: ", weapon_id)
 
 func _apply_weapon(weapon_id: String) -> void:
+	# Remove current dynamic weapon
+	if current_weapon_node:
+		current_weapon_node.queue_free()
+		current_weapon_node = null
+
+	# Hide built-in weapons
+	if builtin_sword:
+		builtin_sword.visible = false
+	if builtin_gun:
+		builtin_gun.visible = false
+
 	current_weapon = weapon_id
-	if sword_node:
-		sword_node.visible = (weapon_id == "sword")
-	if gun_node:
-		gun_node.visible = (weapon_id == "gun")
+
+	if weapon_id == "none":
+		return
+
+	# Check for built-in weapons (backward compat)
+	if weapon_id == "sword" and not weapon_registry.has("sword"):
+		if builtin_sword:
+			builtin_sword.visible = true
+		return
+	if weapon_id == "gun" and not weapon_registry.has("gun"):
+		if builtin_gun:
+			builtin_gun.visible = true
+		return
+
+	# Load from registry
+	if not weapon_registry.has(weapon_id):
+		print("[cat] Unknown weapon: ", weapon_id)
+		return
+
+	var info: Dictionary = weapon_registry[weapon_id]
+	var glb_path = "res://weapons/" + str(info["file"])
+	var scene = load(glb_path)
+	if not scene:
+		print("[cat] Could not load weapon: ", glb_path)
+		return
+
+	current_weapon_node = scene.instantiate()
+
+	# Flip mesh Z to match built-in sword blade direction and shift grip point
+	# Custom weapons have origin at pommel (Z=0), blade at Z=6.8
+	# scale.z=-1 flips blade direction; position.z shifts handle to grip point
+	var grip_z = info.get("grip_offset", 4.0)
+	for child in current_weapon_node.get_children():
+		if child is MeshInstance3D:
+			child.scale.z = -1.0
+			child.position.z = grip_z
+
+	# Apply offset, rotation, scale from registry
+	var offset = info.get("offset", [0, 0, 0])
+	current_weapon_node.position = Vector3(offset[0], offset[1], offset[2])
+	var rot = info.get("rotation", [0, 0, 0])
+	current_weapon_node.rotation_degrees = Vector3(rot[0], rot[1], rot[2])
+	var scl = info.get("scale", [1, 1, 1])
+	current_weapon_node.scale = Vector3(scl[0], scl[1], scl[2])
+
+	# Attach to the appropriate socket based on weapon type
+	var wtype = str(info.get("type", "sword"))
+	if wtype == "gun" and gun_socket:
+		gun_socket.add_child(current_weapon_node)
+	elif sword_socket:
+		sword_socket.add_child(current_weapon_node)
+
+	# Create trimesh collision for click-to-grip raycasting
+	_add_weapon_collision(current_weapon_node)
 
 func _apply_primary_color(color: Color) -> void:
 	if fur_shader_mat:
@@ -416,6 +500,58 @@ func _on_set_hat_transform(offset_y: float, offset_z: float, rotation_y: float, 
 	current_hat_node.rotation_degrees = Vector3(0.0, rotation_y, 0.0)
 	current_hat_node.scale = Vector3(hat_scale, hat_scale, hat_scale)
 	print("[hat] offset_y=", offset_y, " offset_z=", offset_z, " rot_y=", rotation_y, " scale=", hat_scale)
+
+func _on_set_weapon_transform(ox: float, oy: float, oz: float, rx: float, ry: float, rz: float, wscale: float) -> void:
+	if not current_weapon_node:
+		return
+	current_weapon_node.position = Vector3(ox, oy, oz)
+	current_weapon_node.rotation_degrees = Vector3(rx, ry, rz)
+	current_weapon_node.scale = Vector3(wscale, wscale, wscale)
+	print("[weapon] ox=", ox, " oy=", oy, " oz=", oz, " rx=", rx, " ry=", ry, " rz=", rz, " scale=", wscale)
+
+func _add_weapon_collision(node: Node) -> void:
+	if node is MeshInstance3D:
+		# Skip collision for meshes with negative scale (causes basis invert error)
+		if node.scale.x > 0 and node.scale.y > 0 and node.scale.z > 0:
+			node.create_trimesh_collision()
+	for child in node.get_children():
+		_add_weapon_collision(child)
+
+func _on_weapon_pick_grip(screen_x: float, screen_y: float) -> void:
+	if not current_weapon_node or not camera:
+		print("[weapon] No weapon or camera for pick")
+		return
+
+	var viewport := get_viewport()
+	var vp_size := viewport.get_visible_rect().size
+	var pixel_pos := Vector2(screen_x * vp_size.x, screen_y * vp_size.y)
+
+	var from := camera.project_ray_origin(pixel_pos)
+	var dir := camera.project_ray_normal(pixel_pos)
+	var to := from + dir * 100.0
+
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	var result := space.intersect_ray(query)
+
+	if result.is_empty():
+		print("[weapon] Pick miss — no hit")
+		return
+
+	# Convert hit point to weapon-local space
+	var hit_world: Vector3 = result.position
+	var weapon_global := current_weapon_node.global_transform
+	var hit_local := weapon_global.affine_inverse() * hit_world
+
+	# Offset weapon so the grip point aligns with the socket origin
+	var new_offset := -hit_local
+	current_weapon_node.position = new_offset
+	print("[weapon] GRIP SET: offset=", new_offset, " (hit_local=", hit_local, ")")
+
+	# Publish result back to JS for slider update
+	if OS.has_feature("web"):
+		var js := "window._weaponGripResult={ox:%f,oy:%f,oz:%f};" % [new_offset.x, new_offset.y, new_offset.z]
+		JavaScriptBridge.eval(js)
 
 func _on_set_camera_target(x: float, y: float, z: float) -> void:
 	cam_target = Vector3(x, y, z)

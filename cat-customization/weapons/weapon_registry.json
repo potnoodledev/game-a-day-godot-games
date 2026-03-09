@@ -1,0 +1,57 @@
+{
+  "sword_one_handed": {
+    "file": "sword_one_handed.glb",
+    "display_name": "Sword (1H)",
+    "type": "sword",
+    "offset": [0.020, 0.039, -0.001],
+    "rotation": [-12.17, -177.61, 87.74],
+    "scale": [0.102, 0.101, 0.117],
+    "source_uid": "12ce5c79395d41c1ba3e95a85d68fe56",
+    "license": "CC Attribution",
+    "author": "eugeen"
+  },
+  "sword_two_handed": {
+    "file": "sword_two_handed.glb",
+    "display_name": "Sword (2H)",
+    "type": "sword",
+    "offset": [0.020, 0.039, -0.001],
+    "rotation": [-12.17, -177.61, 87.74],
+    "scale": [0.102, 0.101, 0.117],
+    "source_uid": "12ce5c79395d41c1ba3e95a85d68fe56",
+    "license": "CC Attribution",
+    "author": "eugeen"
+  },
+  "axe_one_handed": {
+    "file": "axe_one_handed.glb",
+    "display_name": "Axe (1H)",
+    "type": "sword",
+    "offset": [0.020, 0.039, -0.001],
+    "rotation": [-12.17, -177.61, 87.74],
+    "scale": [0.102, 0.101, 0.117],
+    "source_uid": "12ce5c79395d41c1ba3e95a85d68fe56",
+    "license": "CC Attribution",
+    "author": "eugeen"
+  },
+  "axe_two_handed": {
+    "file": "axe_two_handed.glb",
+    "display_name": "Axe (2H)",
+    "type": "sword",
+    "offset": [0.020, 0.039, -0.001],
+    "rotation": [-12.17, -177.61, 87.74],
+    "scale": [0.102, 0.101, 0.117],
+    "source_uid": "12ce5c79395d41c1ba3e95a85d68fe56",
+    "license": "CC Attribution",
+    "author": "eugeen"
+  },
+  "hammer_two_handed": {
+    "file": "hammer_two_handed.glb",
+    "display_name": "Hammer (2H)",
+    "type": "sword",
+    "offset": [0.020, 0.039, -0.001],
+    "rotation": [-12.17, -177.61, 87.74],
+    "scale": [0.102, 0.101, 0.117],
+    "source_uid": "12ce5c79395d41c1ba3e95a85d68fe56",
+    "license": "CC Attribution",
+    "author": "eugeen"
+  }
+}

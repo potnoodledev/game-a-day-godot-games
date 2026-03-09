@@ -25,6 +25,8 @@ signal weapon_changed(weapon_id: String)
 signal hat_changed(hat_id: String)
 signal camera_target_changed(x: float, y: float, z: float)
 signal hat_transform_changed(offset_y: float, offset_z: float, rotation_y: float, scale: float)
+signal weapon_transform_changed(offset_x: float, offset_y: float, offset_z: float, rot_x: float, rot_y: float, rot_z: float, wscale: float)
+signal weapon_pick_grip(screen_x: float, screen_y: float)
 
 var _poll_counter := 0
 var _js_available := false
@@ -104,6 +106,7 @@ func _setup_js_bridge() -> void:
 			getAnimations: function() { return window._catAnimations || []; },
 			getScenes: function() { return window._catScenes || []; },
 			getHats: function() { return window._catHats || []; },
+			getWeapons: function() { return window._catWeapons || []; },
 			getConfig: function() { return window._catCurrentConfig || {}; },
 		};
 		return 'installed';
@@ -171,6 +174,10 @@ func _dispatch_command(cmd: Dictionary) -> void:
 			camera_target_changed.emit(cmd["x"], cmd["y"], cmd["z"])
 		"set_hat_transform":
 			hat_transform_changed.emit(cmd["offset_y"], cmd["offset_z"], cmd["rotation_y"], cmd["scale"])
+		"set_weapon_transform":
+			weapon_transform_changed.emit(cmd["offset_x"], cmd["offset_y"], cmd["offset_z"], cmd["rot_x"], cmd["rot_y"], cmd["rot_z"], cmd["scale"])
+		"weapon_pick_grip":
+			weapon_pick_grip.emit(cmd["x"], cmd["y"])
 
 ## Called by main.gd to publish animation list back to JS
 func publish_animations(names: Array) -> void:
@@ -192,6 +199,13 @@ func publish_hats(ids: Array) -> void:
 		return
 	var json := JSON.stringify(ids)
 	JavaScriptBridge.eval("window._catHats=" + json)
+
+## Called by main.gd to publish weapon list back to JS
+func publish_weapons(ids: Array) -> void:
+	if not _js_available:
+		return
+	var json := JSON.stringify(ids)
+	JavaScriptBridge.eval("window._catWeapons=" + json)
 
 ## Called by main.gd to publish current config back to JS
 func publish_config(config: Dictionary) -> void:

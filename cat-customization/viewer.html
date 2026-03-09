@@ -185,11 +185,45 @@ select {
 
   <div class="section">
     <div class="section-title">Weapon</div>
-    <select id="weapon-select">
-      <option value="none">None</option>
-      <option value="sword">Sword</option>
-      <option value="gun">Gun</option>
-    </select>
+    <select id="weapon-select"><option value="none">None</option></select>
+    <button class="api-toggle" id="weapon-adjust-toggle" style="margin-top:6px;border-top:none;font-size:10px;color:#666">
+      Adjust <span class="arrow">&#9654;</span>
+    </button>
+    <div id="weapon-adjust" style="display:none">
+      <label style="font-size:12px;color:#f90;display:flex;align-items:center;gap:8px;cursor:pointer;margin:8px 0">
+        <input type="checkbox" id="weapon-grip-mode"> Click weapon to set grip
+      </label>
+      <div style="font-size:10px;color:#666;margin-bottom:8px">Click on the weapon where the hand should grip</div>
+      <div class="slider-row" style="margin-top:6px">
+        <label>X Offset <span id="wep-ox-val">0.00</span></label>
+        <input type="range" id="wep-ox" min="-1" max="1" step="0.01" value="0">
+      </div>
+      <div class="slider-row">
+        <label>Y Offset <span id="wep-oy-val">0.00</span></label>
+        <input type="range" id="wep-oy" min="-1" max="1" step="0.01" value="0">
+      </div>
+      <div class="slider-row">
+        <label>Z Offset <span id="wep-oz-val">0.00</span></label>
+        <input type="range" id="wep-oz" min="-1" max="1" step="0.01" value="0">
+      </div>
+      <div class="slider-row">
+        <label>Rot X <span id="wep-rx-val">0</span></label>
+        <input type="range" id="wep-rx" min="-180" max="180" step="1" value="0">
+      </div>
+      <div class="slider-row">
+        <label>Rot Y <span id="wep-ry-val">0</span></label>
+        <input type="range" id="wep-ry" min="-180" max="180" step="1" value="0">
+      </div>
+      <div class="slider-row">
+        <label>Rot Z <span id="wep-rz-val">0</span></label>
+        <input type="range" id="wep-rz" min="-180" max="180" step="1" value="0">
+      </div>
+      <div class="slider-row">
+        <label>Scale <span id="wep-scale-val">1.00</span></label>
+        <input type="range" id="wep-scale" min="0.1" max="3.0" step="0.01" value="1.0">
+      </div>
+      <div id="wep-values" style="font-size:10px;color:#8cf;font-family:monospace;margin-top:4px;word-break:break-all"></div>
+    </div>
   </div>
 
   <div class="section">
@@ -295,7 +329,7 @@ select {
       <div class="api-group-title">Weapon</div>
       <div class="api-method">
         <code>catViewer.setWeapon(id)</code>
-        <div class="api-vals">none, sword, gun</div>
+        <div class="api-vals">none, sword, gun + registry weapons</div>
         <div class="api-desc">Auto-set by Sword_*/Pistol_*/Arm_* anims</div>
       </div>
 
@@ -313,6 +347,10 @@ select {
       <div class="api-method">
         <code>catViewer.getScenes()</code>
         <div class="api-desc">Returns array of scene IDs</div>
+      </div>
+      <div class="api-method">
+        <code>catViewer.getWeapons()</code>
+        <div class="api-desc">Returns array of weapon IDs</div>
       </div>
 
       <div class="api-group-title">Initial Config (engine args)</div>
@@ -370,6 +408,9 @@ window.catViewer = {
   // Weapon
   setWeapon: (id) => window._catCommands.push({cmd:'set_weapon',value:id}),
 
+  // Weapon transform
+  setWeaponTransform: (ox,oy,oz,rx,ry,rz,s) => window._catCommands.push({cmd:'set_weapon_transform',offset_x:ox,offset_y:oy,offset_z:oz,rot_x:rx,rot_y:ry,rot_z:rz,scale:s}),
+
   // Hat
   setHat: (id) => window._catCommands.push({cmd:'set_hat',value:id}),
 
@@ -377,6 +418,7 @@ window.catViewer = {
   getAnimations: () => window._catAnimations || [],
   getScenes: () => window._catScenes || [],
   getHats: () => window._catHats || [],
+  getWeapons: () => window._catWeapons || [],
 
   // Bulk configure
   configure: (opts) => {
@@ -536,7 +578,49 @@ document.getElementById('hat-offset-y').addEventListener('input', sendHatTransfo
 document.getElementById('hat-offset-z').addEventListener('input', sendHatTransform);
 document.getElementById('hat-rot-y').addEventListener('input', sendHatTransform);
 document.getElementById('hat-scale').addEventListener('input', sendHatTransform);
-document.getElementById('weapon-select').addEventListener('change', (e) => catViewer.setWeapon(e.target.value));
+document.getElementById('weapon-select').addEventListener('change', (e) => {
+  catViewer.setWeapon(e.target.value);
+});
+
+// Weapon adjust
+document.getElementById('weapon-adjust-toggle').addEventListener('click', function() {
+  this.classList.toggle('open');
+  const panel = document.getElementById('weapon-adjust');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+
+function sendWeaponTransform() {
+  const ox = parseFloat(document.getElementById('wep-ox').value);
+  const oy = parseFloat(document.getElementById('wep-oy').value);
+  const oz = parseFloat(document.getElementById('wep-oz').value);
+  const rx = parseFloat(document.getElementById('wep-rx').value);
+  const ry = parseFloat(document.getElementById('wep-ry').value);
+  const rz = parseFloat(document.getElementById('wep-rz').value);
+  const sc = parseFloat(document.getElementById('wep-scale').value);
+  document.getElementById('wep-ox-val').textContent = ox.toFixed(2);
+  document.getElementById('wep-oy-val').textContent = oy.toFixed(2);
+  document.getElementById('wep-oz-val').textContent = oz.toFixed(2);
+  document.getElementById('wep-rx-val').textContent = rx;
+  document.getElementById('wep-ry-val').textContent = ry;
+  document.getElementById('wep-rz-val').textContent = rz;
+  document.getElementById('wep-scale-val').textContent = sc.toFixed(2);
+  window._catCommands.push({cmd:'set_weapon_transform', offset_x:ox, offset_y:oy, offset_z:oz, rot_x:rx, rot_y:ry, rot_z:rz, scale:sc});
+  // Show copyable values
+  document.getElementById('wep-values').textContent =
+    `[${ox.toFixed(2)}, ${oy.toFixed(2)}, ${oz.toFixed(2)}] rot[${rx}, ${ry}, ${rz}] s${sc.toFixed(2)}`;
+  console.log(`[weapon] ox=${ox} oy=${oy} oz=${oz} rx=${rx} ry=${ry} rz=${rz} scale=${sc}`);
+}
+
+['wep-ox','wep-oy','wep-oz','wep-rx','wep-ry','wep-rz','wep-scale'].forEach(id => {
+  document.getElementById(id).addEventListener('input', sendWeaponTransform);
+});
+
+// Weapon grip click mode (canvas-dependent code is below, after canvas is declared)
+let weaponGripMode = false;
+document.getElementById('weapon-grip-mode').addEventListener('change', (e) => {
+  weaponGripMode = e.target.checked;
+  document.getElementById('canvas').style.cursor = e.target.checked ? 'crosshair' : '';
+});
 document.getElementById('scene-select').addEventListener('change', (e) => catViewer.setScene(e.target.value));
 document.getElementById('auto-rotate').addEventListener('change', (e) => catViewer.setAutoRotate(e.target.checked));
 
@@ -568,6 +652,20 @@ function pollLists() {
     if (select.options.length <= 1) {
       select.innerHTML = '';
       hats.forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = id === 'none' ? 'None' : id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        select.appendChild(opt);
+      });
+    }
+  } else { done = false; }
+
+  const weapons = window._catWeapons;
+  if (weapons && weapons.length > 0) {
+    const select = document.getElementById('weapon-select');
+    if (select.options.length <= 1) {
+      select.innerHTML = '';
+      weapons.forEach(id => {
         const opt = document.createElement('option');
         opt.value = id;
         opt.textContent = id === 'none' ? 'None' : id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -637,12 +735,12 @@ const canvas = document.getElementById('canvas');
 
 canvas.addEventListener('mousedown', (e) => {
   if (e.button === 0) { cam.dragging = true; cam.lastX = e.clientX; cam.lastY = e.clientY; }
-  if (e.button === 1) { e.preventDefault(); cam.panning = true; cam.lastX = e.clientX; cam.lastY = e.clientY; }
+  if (e.button === 1 || e.button === 2) { e.preventDefault(); cam.panning = true; cam.lastX = e.clientX; cam.lastY = e.clientY; }
 });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener('mouseup', (e) => {
   if (e.button === 0) cam.dragging = false;
-  if (e.button === 1) cam.panning = false;
+  if (e.button === 1 || e.button === 2) cam.panning = false;
 });
 window.addEventListener('mousemove', (e) => {
   if (!cam.dragging && !cam.panning) return;
@@ -650,6 +748,7 @@ window.addEventListener('mousemove', (e) => {
   const dy = e.clientY - cam.lastY;
   cam.lastX = e.clientX;
   cam.lastY = e.clientY;
+
   if (cam.panning) {
     panCamera(dx, dy);
   } else {
@@ -731,6 +830,32 @@ canvas.addEventListener('touchend', (e) => {
   touchCache = Array.from(e.touches);
   if (touchCache.length < 2) { lastPinchDist = 0; }
 }, { passive: true });
+
+// Weapon grip: click on weapon to set grip point
+canvas.addEventListener('click', (e) => {
+  if (!weaponGripMode) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  window._catCommands.push({cmd:'weapon_pick_grip', x:x, y:y});
+  console.log(`[weapon] Pick at normalized (${x.toFixed(3)}, ${y.toFixed(3)})`);
+});
+
+// Poll for grip result from Godot
+setInterval(() => {
+  if (window._weaponGripResult) {
+    const r = window._weaponGripResult;
+    document.getElementById('wep-ox').value = r.ox.toFixed(3);
+    document.getElementById('wep-oy').value = r.oy.toFixed(3);
+    document.getElementById('wep-oz').value = r.oz.toFixed(3);
+    document.getElementById('wep-ox-val').textContent = r.ox.toFixed(2);
+    document.getElementById('wep-oy-val').textContent = r.oy.toFixed(2);
+    document.getElementById('wep-oz-val').textContent = r.oz.toFixed(2);
+    document.getElementById('wep-values').textContent =
+      `Grip: [${r.ox.toFixed(3)}, ${r.oy.toFixed(3)}, ${r.oz.toFixed(3)}]`;
+    window._weaponGripResult = null;
+  }
+}, 200);
 
 // --- Start Godot engine ---
 const GODOT_CONFIG = {
