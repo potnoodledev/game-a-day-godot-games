@@ -442,7 +442,7 @@ func _apply_weapon(weapon_id: String) -> void:
 	# Flip mesh Z to match built-in sword blade direction and shift grip point
 	# Custom weapons have origin at pommel (Z=0), blade at Z=6.8
 	# scale.z=-1 flips blade direction; position.z shifts handle to grip point
-	var grip_z = info.get("grip_offset", 4.0)
+	var grip_z = info.get("grip_offset", 6.0)
 	for child in current_weapon_node.get_children():
 		if child is MeshInstance3D:
 			child.scale.z = -1.0
