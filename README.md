@@ -8,6 +8,18 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 |-----|------|------|--------|
 | 26 | Arena Fighter | Mar 6, 2026 | Godot 4.6.1 |
 | 27 | Fit The Block | Mar 9, 2026 | Godot 4.6.1 |
+| 28 | Super Plumber Run | Mar 10, 2026 | Godot 4.6.1 |
+
+## Day 28: Super Plumber Run
+
+Mario Day auto-running platformer — tap to jump, double-jump mid-air. 10-section designed level with pipes, goombas, coin arcs, question blocks, brick bridges, pits, and a flagpole + castle finish. Runtime-generated chiptune audio (square wave melody + triangle wave bass + death jingle) — all PCM, no imported WAV files. Scored by coins, stomps, block bonuses, flag height, and time remaining.
+
+**Key technical details:**
+- All audio generated at runtime as raw PCM via AudioStreamWAV (Godot's WAV import QOA compression is broken on HTML5)
+- Parallax scrolling (clouds 0.15x, hills 0.3x, bushes 0.6x) with camera-relative drawing
+- Shared Godot runtime across all days — archived days only need the .pck file (~33KB)
+
+**Stats:** ~8 iterations · ~120k tokens
 
 ## Day 27: Fit The Block
 
