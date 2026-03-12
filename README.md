@@ -9,6 +9,19 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 | 26 | Arena Fighter | Mar 6, 2026 | Godot 4.6.1 |
 | 27 | Fit The Block | Mar 9, 2026 | Godot 4.6.1 |
 | 28 | Super Plumber Run | Mar 10, 2026 | Godot 4.6.1 |
+| 30 | Terraforming Mars | Mar 12, 2026 | Godot 4.6.1 |
+
+## Day 30: Terraforming Mars
+
+Engine-builder card game inspired by the board game. Draft project cards, build production engines, convert Heat/Plants into parameter steps, and race to terraform Mars in 20 generations. 3D procedural planet with shader-driven terrain, oceans, greenery, and atmosphere that visually transform. Horizontal card hand UI (Hearthstone-style) with fixed action bar. 36 cards with tag synergies across 6 types.
+
+**Key technical details:**
+- Custom spatial shader: fbm noise terrain, depth-based oceans, oxygen-driven greenery, fresnel atmosphere
+- Planet patches: glowing spheres spawn on visible hemisphere when parameters change (orange/blue/green)
+- Income compound growth: every parameter step gives +1 permanent income per turn
+- 4 UI iterations from vertical lists to horizontal card hand
+
+**Stats:** ~6 iterations · ~180k tokens
 
 ## Day 28: Super Plumber Run
 
