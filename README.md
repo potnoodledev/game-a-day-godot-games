@@ -10,6 +10,20 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 | 27 | Fit The Block | Mar 9, 2026 | Godot 4.6.1 |
 | 28 | Super Plumber Run | Mar 10, 2026 | Godot 4.6.1 |
 | 30 | Terraforming Mars | Mar 12, 2026 | Godot 4.6.1 |
+| 31 | Survive Till Dawn | Mar 13, 2026 | Godot 4.6.1 |
+
+## Day 31: Survive Till Dawn
+
+Friday the 13th stealth survival at Camp Crystal Lake. Tap to move through darkness with only a flashlight circle. Search 7 cabins for 5 escape items while Jason stalks the camp. Heartbeat audio pulses faster as Jason approaches. Survive until 6 AM or find all items to escape.
+
+**Key technical details:**
+- Darkness via alpha modulation: near-black ground + radial lit circle + `_visibility()` distance function on all objects
+- Jason AI: patrol/hunt two-state machine with line-of-sight blocked by cabin AABBs
+- Procedural camp: rejection-sampled cabins, trees, lake, paths
+- Runtime PCM heartbeat: dual-thump "lub-dub" with proximity-driven pitch and volume
+- Cabin glow beacons visible from 3x light radius for navigation
+
+**Stats:** ~6 iterations · ~100k tokens
 
 ## Day 30: Terraforming Mars
 
