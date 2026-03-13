@@ -17,6 +17,11 @@ const TREE_COUNT := 55
 const ITEM_COUNT := 5
 const GAME_DURATION := 300.0   # 5 minutes real time = midnight to 6 AM
 const SEARCH_TIME := 2.0
+const SPRINT_SPEED := 220.0
+const SPRINT_THRESHOLD := 200.0  # tap distance to trigger sprint
+const BATTERY_DRAIN := 0.0028    # ~6 min to drain fully
+const BATTERY_FLICKER_THRESHOLD := 0.3
+const JASON_TELEPORT_INTERVAL := 25.0  # seconds between possible teleports
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 const COL_GROUND := Color(0.015, 0.02, 0.01)
@@ -99,8 +104,27 @@ var heartbeat_fast := false
 var _score_submitted := false
 var _best_score: int = 0
 
+# Sprint
+var sprinting := false
+var sprint_noise := 0.0  # 0-1, raises Jason detection range
+
+# Flashlight battery
+var flashlight_battery := 1.0
+var flicker_offset := 0.0
+var flicker_timer := 0.0
+
+# Jason teleport
+var jason_teleport_timer := 0.0
+
+# Screen shake
+var screen_shake := 0.0
+
+# Ambient audio
+var ambient_player: AudioStreamPlayer
+
 # Footstep tracking
 var _step_timer := 0.0
+var footprints: Array = []  # {pos: Vector2, age: float}
 
 
 func _ready() -> void:
@@ -269,6 +293,35 @@ func _setup_audio() -> void:
 	heartbeat_player.stream = stream
 	heartbeat_player.volume_db = -80.0  # start silent
 
+	# Ambient cricket/wind loop
+	ambient_player = AudioStreamPlayer.new()
+	add_child(ambient_player)
+	var amb_stream := AudioStreamWAV.new()
+	amb_stream.format = AudioStreamWAV.FORMAT_16_BITS
+	amb_stream.mix_rate = 22050
+	amb_stream.stereo = false
+	amb_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	var amb_samples: int = 22050 * 3  # 3 second loop
+	var amb_data := PackedByteArray()
+	amb_data.resize(amb_samples * 2)
+	for i in range(amb_samples):
+		var t: float = float(i) / 22050.0
+		var val := 0.0
+		# Crickets: rapid chirps at ~4kHz modulated by slow envelope
+		var chirp_env: float = max(0.0, sin(t * 7.0 * TAU)) * max(0.0, sin(t * 0.8 * TAU))
+		val += sin(t * 4200.0 * TAU) * chirp_env * 0.08
+		# Second cricket offset
+		var chirp2: float = max(0.0, sin((t + 0.3) * 5.5 * TAU)) * max(0.0, sin((t + 0.3) * 0.6 * TAU))
+		val += sin(t * 3800.0 * TAU) * chirp2 * 0.06
+		# Wind: filtered noise
+		val += (randf() - 0.5) * 0.015 * (0.5 + 0.5 * sin(t * 0.2 * TAU))
+		var amb_s: int = clampi(int(val * 32000.0), -32767, 32767)
+		amb_data.encode_s16(i * 2, amb_s)
+	amb_stream.data = amb_data
+	amb_stream.loop_end = amb_samples
+	ambient_player.stream = amb_stream
+	ambient_player.volume_db = -18.0
+
 
 # ── Input ────────────────────────────────────────────────────────────────────
 
@@ -311,10 +364,12 @@ func _input(event: InputEvent) -> void:
 					search_msg_timer = 1.0
 					return
 
-		# Move toward tap
+		# Move toward tap — far taps trigger sprint
 		player_target = world
 		player_target.x = clampf(player_target.x, 20.0, MAP_W - 20.0)
 		player_target.y = clampf(player_target.y, 20.0, MAP_H - 20.0)
+		var tap_dist: float = player_pos.distance_to(player_target)
+		sprinting = tap_dist > SPRINT_THRESHOLD
 
 
 func _is_press(event: InputEvent) -> bool:
@@ -402,10 +457,44 @@ func _process(delta: float) -> void:
 		if heartbeat_player.playing:
 			heartbeat_player.stop()
 
-	# Jason speed ramp
+	# Sprint noise (decays when not sprinting)
+	if sprinting and player_pos.distance_to(player_target) > 5.0:
+		sprint_noise = minf(sprint_noise + delta * 2.0, 1.0)
+	else:
+		sprint_noise = maxf(sprint_noise - delta * 1.5, 0.0)
+		sprinting = false
+
+	# Flashlight battery drain
+	flashlight_battery -= BATTERY_DRAIN * delta
+	if flashlight_battery < 0.0:
+		flashlight_battery = 0.0
+	# Flicker when low
+	flicker_timer += delta
+	if flashlight_battery < BATTERY_FLICKER_THRESHOLD:
+		var flicker_chance: float = (1.0 - flashlight_battery / BATTERY_FLICKER_THRESHOLD) * 0.4
+		if randf() < flicker_chance * delta * 10.0:
+			flicker_offset = randf_range(-30.0, -60.0)  # sudden dim
+		else:
+			flicker_offset = lerpf(flicker_offset, 0.0, delta * 8.0)
+	else:
+		flicker_offset = lerpf(flicker_offset, 0.0, delta * 10.0)
+
+	# Jason speed ramp (much scarier now)
 	var minutes: float = game_time / 60.0
-	jason_base_speed = 45.0 + minutes * 4.0
-	jason_hunt_speed = 70.0 + minutes * 5.0
+	jason_base_speed = 55.0 + minutes * 5.0
+	jason_hunt_speed = 95.0 + minutes * 6.0
+
+	# Jason teleport — when offscreen, occasionally warp to a nearby cabin
+	jason_teleport_timer += delta
+	if jason_teleport_timer > JASON_TELEPORT_INTERVAL and jason_state == 0:
+		var dist_to_player: float = jason_pos.distance_to(player_pos)
+		if dist_to_player > 400.0:  # only when far away
+			_jason_teleport_near_player()
+			jason_teleport_timer = 0.0
+
+	# Screen shake decay
+	if screen_shake > 0.0:
+		screen_shake = maxf(screen_shake - delta * 4.0, 0.0)
 
 	# Screen flash decay
 	if screen_flash > 0.0:
@@ -413,10 +502,33 @@ func _process(delta: float) -> void:
 		if screen_flash < 0.0:
 			screen_flash = 0.0
 
-	# Camera follow
-	cam = cam.lerp(player_pos, 5.0 * delta)
+	# Camera follow (with screen shake)
+	var shake_offset := Vector2.ZERO
+	if screen_shake > 0.0:
+		shake_offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * screen_shake * 8.0
+	cam = cam.lerp(player_pos, 5.0 * delta) + shake_offset
 	cam.x = clampf(cam.x, sw * 0.5, MAP_W - sw * 0.5)
 	cam.y = clampf(cam.y, sh * 0.5, MAP_H - sh * 0.5)
+
+	# Ambient audio
+	if not ambient_player.playing:
+		ambient_player.play()
+
+	# Footprints
+	if player_pos.distance_to(player_target) > 5.0:
+		_step_timer += delta
+		var step_interval: float = 0.3 if sprinting else 0.5
+		if _step_timer > step_interval:
+			_step_timer = 0.0
+			footprints.append({"pos": player_pos, "age": 0.0})
+	# Age and remove old footprints
+	var i := 0
+	while i < footprints.size():
+		footprints[i]["age"] = float(footprints[i]["age"]) + delta
+		if float(footprints[i]["age"]) > 4.0:
+			footprints.remove_at(i)
+		else:
+			i += 1
 
 	# Points tick
 	points = items_found * 200 + int(game_time) * 2
@@ -429,8 +541,10 @@ func _process(delta: float) -> void:
 func _move_player(delta: float) -> void:
 	var diff: Vector2 = player_target - player_pos
 	if diff.length() < 3.0:
+		sprinting = false
 		return
-	var vel: Vector2 = diff.normalized() * player_speed * delta
+	var speed: float = SPRINT_SPEED if sprinting else player_speed
+	var vel: Vector2 = diff.normalized() * speed * delta
 	if vel.length() > diff.length():
 		vel = diff
 	var new_pos: Vector2 = player_pos + vel
@@ -499,6 +613,7 @@ func _update_jason(delta: float) -> void:
 			jason_last_seen_pos = player_pos
 			jason_awareness = 1.0
 			screen_flash = 0.5
+			screen_shake = 1.0  # camera shake on detection!
 
 	elif jason_state == 1:  # Hunting
 		if can_see_player:
@@ -540,8 +655,10 @@ func _jason_can_see_player() -> bool:
 	# Close range always detects
 	if dist < 60.0:
 		return true
+	# Detection range expands when player is sprinting (noise!)
+	var detect_range: float = 280.0 + sprint_noise * 250.0
 	# Beyond detection range
-	if dist > 280.0:
+	if dist > detect_range:
 		return false
 	# If player is searching (in cabin), harder to detect
 	if game_state == State.SEARCHING and dist > 100.0:
@@ -580,6 +697,28 @@ func _jason_pick_patrol() -> void:
 	else:
 		jason_patrol_target = Vector2(randf_range(100, MAP_W - 100), randf_range(100, MAP_H - 100))
 	jason_patrol_wait = randf_range(1.5, 4.0)
+
+
+func _jason_teleport_near_player() -> void:
+	# Teleport Jason to a cabin that's close-ish to the player but not visible
+	var best_cabin := -1
+	var best_score := -1.0
+	for i in range(cabins.size()):
+		var cpos: Vector2 = Vector2(cabins[i]["pos"])
+		var d_to_player: float = cpos.distance_to(player_pos)
+		# Must be outside player's light but not too far (sweet spot: 300-600px)
+		if d_to_player < LIGHT_RADIUS * 2.0 or d_to_player > 700.0:
+			continue
+		# Prefer cabins the player hasn't searched (they'll go there)
+		var score: float = 1.0 / (d_to_player + 1.0) * 1000.0
+		if not bool(cabins[i]["searched"]):
+			score *= 2.0
+		if score > best_score:
+			best_score = score
+			best_cabin = i
+	if best_cabin >= 0:
+		jason_pos = Vector2(cabins[best_cabin]["pos"]) + Vector2(randf_range(-40, 40), randf_range(-40, 40))
+		jason_patrol_target = jason_pos
 
 
 func _jason_avoid_lake(delta: float) -> void:
@@ -636,6 +775,13 @@ func _start_game() -> void:
 	search_msg_timer = 0.0
 	jason_state = 0
 	jason_lost_timer = 0.0
+	jason_teleport_timer = 0.0
+	sprinting = false
+	sprint_noise = 0.0
+	flashlight_battery = 1.0
+	flicker_offset = 0.0
+	screen_shake = 0.0
+	footprints.clear()
 	_generate_map()
 
 
@@ -685,12 +831,15 @@ func _draw() -> void:
 	# Ground — dark
 	draw_rect(Rect2(0, 0, sw, sh), COL_GROUND)
 
+	# Effective light radius (battery + flicker)
+	var eff_light: float = LIGHT_RADIUS * clampf(flashlight_battery * 1.1, 0.15, 1.0) + flicker_offset
+
 	# Lit ground circle — smooth radial gradient from player position
 	var pscreen: Vector2 = player_pos + offset
 	var lit_steps := 32
 	for i in range(lit_steps, 0, -1):
 		var frac: float = float(i) / float(lit_steps)
-		var r: float = LIGHT_RADIUS * 1.2 * frac
+		var r: float = eff_light * 1.2 * frac
 		# Quadratic falloff for natural light feel
 		var intensity: float = (1.0 - frac) * (1.0 - frac)
 		var col: Color = COL_GROUND_LIT
@@ -703,6 +852,7 @@ func _draw() -> void:
 	_draw_cabins(offset)
 	_draw_trees(offset)
 	_draw_items_in_cabins(offset)
+	_draw_footprints(offset)
 	_draw_jason(offset)
 	_draw_player(offset)
 
@@ -736,12 +886,13 @@ func _draw() -> void:
 
 
 func _visibility(world_pos: Vector2) -> float:
+	var eff: float = LIGHT_RADIUS * clampf(flashlight_battery * 1.1, 0.15, 1.0) + flicker_offset
 	var d: float = player_pos.distance_to(world_pos)
-	if d > LIGHT_RADIUS * 1.4:
+	if d > eff * 1.4:
 		return 0.0
-	if d < LIGHT_RADIUS * 0.5:
+	if d < eff * 0.5:
 		return 1.0
-	return 1.0 - (d - LIGHT_RADIUS * 0.5) / (LIGHT_RADIUS * 0.9)
+	return 1.0 - (d - eff * 0.5) / (eff * 0.9)
 
 
 func _draw_lake(offset: Vector2) -> void:
@@ -856,8 +1007,23 @@ func _draw_items_in_cabins(offset: Vector2) -> void:
 		draw_circle(cpos + offset, 22.0, glow_col)
 
 
+func _draw_footprints(offset: Vector2) -> void:
+	for fp in footprints:
+		var fpos: Vector2 = Vector2(fp["pos"])
+		var age: float = float(fp["age"])
+		var vis: float = _visibility(fpos)
+		if vis <= 0.0:
+			continue
+		var a: float = vis * (1.0 - age / 4.0) * 0.3
+		draw_circle(fpos + offset, 3.0, Color(0.3, 0.25, 0.15, a))
+
+
 func _draw_player(offset: Vector2) -> void:
 	var ppos: Vector2 = player_pos + offset
+	# Sprint aura
+	if sprinting and sprint_noise > 0.2:
+		var noise_a: float = sprint_noise * 0.15 * (0.6 + 0.4 * sin(game_time * 8.0))
+		draw_circle(ppos, PLAYER_RADIUS * 3.0, Color(1.0, 0.7, 0.2, noise_a))
 	# Body
 	draw_circle(ppos, PLAYER_RADIUS, COL_PLAYER)
 	# Head
@@ -960,6 +1126,24 @@ func _draw_hud() -> void:
 		for item_name in found_items:
 			draw_string(font, Vector2(ix, bottom_y + 18), str(item_name), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, COL_ITEM_GLOW)
 			ix += 110.0
+
+	# Battery indicator (right side, below score)
+	var bat_w := 60.0
+	var bat_h := 6.0
+	var bat_x: float = sw - bat_w - 12.0
+	var bat_y := 34.0
+	draw_rect(Rect2(bat_x, bat_y, bat_w, bat_h), Color(0.2, 0.2, 0.2, 0.6))
+	var bat_col := Color(0.3, 0.8, 0.3, 0.8)
+	if flashlight_battery < 0.3:
+		bat_col = Color(0.9, 0.3, 0.1, 0.8)
+	elif flashlight_battery < 0.5:
+		bat_col = Color(0.9, 0.7, 0.2, 0.8)
+	draw_rect(Rect2(bat_x, bat_y, bat_w * clampf(flashlight_battery, 0.0, 1.0), bat_h), bat_col)
+
+	# Sprint noise indicator
+	if sprint_noise > 0.1:
+		var noise_col := Color(1.0, 0.7, 0.2, sprint_noise * 0.7)
+		draw_string(font, Vector2(sw * 0.5 - 30, sh - 12), "RUNNING!", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, noise_col)
 
 	# Jason proximity warning
 	if heartbeat > 0.5:
@@ -1078,10 +1262,11 @@ func _draw_title() -> void:
 	# Instructions
 	var inst_y: float = sh * 0.62
 	var inst_col := Color(0.7, 0.7, 0.7, 0.7)
-	draw_string(font, Vector2(sw * 0.5 - 120, inst_y), "Tap to move through the camp", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, inst_col)
-	draw_string(font, Vector2(sw * 0.5 - 120, inst_y + 24), "Search cabins for escape items", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, inst_col)
-	draw_string(font, Vector2(sw * 0.5 - 120, inst_y + 48), "Find all 5 items to escape", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, inst_col)
-	draw_string(font, Vector2(sw * 0.5 - 120, inst_y + 72), "Don't let Jason catch you!", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.9, 0.3, 0.3, 0.7))
+	draw_string(font, Vector2(sw * 0.5 - 130, inst_y), "Tap nearby to sneak, far to sprint", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, inst_col)
+	draw_string(font, Vector2(sw * 0.5 - 130, inst_y + 24), "Search cabins for 5 escape items", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, inst_col)
+	draw_string(font, Vector2(sw * 0.5 - 130, inst_y + 48), "Sprinting makes noise — Jason hears!", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.9, 0.7, 0.3, 0.7))
+	draw_string(font, Vector2(sw * 0.5 - 130, inst_y + 72), "Your flashlight is dying...", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.7, 0.7, 0.5, 0.7))
+	draw_string(font, Vector2(sw * 0.5 - 130, inst_y + 96), "Don't let Jason catch you!", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.9, 0.3, 0.3, 0.7))
 
 	# Best score
 	if _best_score > 0:
