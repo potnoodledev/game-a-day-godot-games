@@ -11,6 +11,22 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 | 28 | Super Plumber Run | Mar 10, 2026 | Godot 4.6.1 |
 | 30 | Terraforming Mars | Mar 12, 2026 | Godot 4.6.1 |
 | 31 | Survive Till Dawn | Mar 13, 2026 | Godot 4.6.1 |
+| 32 | Greenhouse Garden | Mar 14, 2026 | Godot 4.6.1 |
+
+## Day 32: Greenhouse Garden
+
+Cozy greenhouse garden with procedural L-system branching trees and blooming flowers. Choose to plant trees or flowers, water to keep them alive, prune branches to boost production, harvest fruit and blooms. Flowers fill a bouquet collection. Butterflies and bees visit thriving gardens. Seasonal arc from Spring through Summer to Autumn with color-shifting visuals and falling leaves. Garden Portrait end screen.
+
+**Key technical details:**
+- L-system-inspired procedural branching: deterministic per-plant RNG, up to depth 4, animated growth
+- Pruning mechanic: tap leaf clusters to snip, grants 8s of 2x production boost
+- Seasonal system: 3 phases with interpolated background/leaf colors, varying growth/drain rates
+- Plant chooser UI: tree vs flower selection with distinct gameplay loops
+- Bouquet collection: harvested flowers accumulate in a vase display
+- Visitor system: butterflies (flowers) and bees (trees, 1.5x ripen speed)
+- Responsive: portrait 2-row layout, font sizes scale with min(sw, sh)
+
+**Stats:** ~8 iterations · ~200k tokens
 
 ## Day 31: Survive Till Dawn
 
