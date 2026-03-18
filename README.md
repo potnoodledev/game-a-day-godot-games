@@ -12,6 +12,11 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 | 30 | Terraforming Mars | Mar 12, 2026 | Godot 4.6.1 |
 | 31 | Survive Till Dawn | Mar 13, 2026 | Godot 4.6.1 |
 | 32 | Greenhouse Garden | Mar 14, 2026 | Godot 4.6.1 |
+| 35 | Wrecking Ball | Mar 17, 2026 | Godot 4.6.1 |
+
+## Day 35: Wrecking Ball
+
+Demolition game with crane + boom arm + golf-style power bar. Tap to aim boom at target, tap ball to start oscillating power bar, tap again to launch. 5 procedural building types (office, house, tower, pyramid, skyscraper) × 6 color palettes with reinforced immovable blocks as structural elements. Blocks check for support below — knocking out foundations causes cascade collapses. Star blocks (gold, 5x points) in hard-to-reach spots, combo multiplier for chain hits (up to x10). 5 shots per building, ground rubble auto-destroys after 1 second. ~12 iterations, ~350k tokens.
 
 ## Day 32: Greenhouse Garden
 
