@@ -13,6 +13,24 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 | 31 | Survive Till Dawn | Mar 13, 2026 | Godot 4.6.1 |
 | 32 | Greenhouse Garden | Mar 14, 2026 | Godot 4.6.1 |
 | 35 | Wrecking Ball | Mar 17, 2026 | Godot 4.6.1 |
+| 36 | Third Space | Mar 18, 2026 | Godot 4.6.1 |
+
+## Day 36: Third Space
+
+Liminal space exploration game focused on atmosphere and dread. Walk through procedurally generated empty rooms — hallways, pools, offices, hotel corridors, stairwells, malls, parking garages, bathrooms — rendered in one-point perspective. Tap the floor to walk, tap doors to enter them. An unease meter builds over time (faster when standing still). As unease rises: colors shift sickly green, lights dim, camera wobbles, whispered text appears, scan lines overlay, and rooms repeat with déjà vu messages. Doors randomly vanish as you approach — one safe door is secretly chosen per room, creating a guessing game. Score = rooms traversed before the space overwhelms you.
+
+**Key technical details:**
+- One-point perspective rendering: back wall + 4 trapezoid surfaces (floor, ceiling, left/right walls) with per-room-type depth/width configs
+- Perspective-correct side doors: computed as wall-surface quads via `_wall_point()` depth/vert interpolation
+- Door vanishing system: safe door pre-selected randomly at room setup, doomed doors fade when player crosses 25% depth threshold
+- Alternating left/right shoe-print footprints with toe+heel circles, fading over 8 seconds
+- 5 ambient event types: shadow crossing back wall, light section going dark, door handle jiggling, wall breathing, peripheral motion
+- 5 anomaly types at high unease: wrong room label, upside-down ceiling door, repeating hotel numbers, pre-existing footprints, impossible window
+- Corridor stretch effect: back wall recedes as you walk toward it
+- Procedural audio: 120Hz fluorescent hum (volume scales with unease), footstep taps, water drip, distant elevator ding
+- Photosensitivity-safe: flicker only dims to 70-85% above 50% unease, no rapid strobing
+
+**Stats:** ~6 iterations · ~200k tokens
 
 ## Day 35: Wrecking Ball
 
