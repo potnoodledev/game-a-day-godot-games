@@ -14,6 +14,22 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 | 32 | Greenhouse Garden | Mar 14, 2026 | Godot 4.6.1 |
 | 35 | Wrecking Ball | Mar 17, 2026 | Godot 4.6.1 |
 | 36 | Third Space | Mar 18, 2026 | Godot 4.6.1 |
+| 37 | Claws | Mar 19, 2026 | Godot 4.6.1 |
+
+## Day 37: Claws
+
+Magnetic claw machine with 600-ball physics ball pit. Drag to position the magnet over the prize pile, tap DROP to lower it. The magnet attracts glowing prize shapes (cubes, cylinders, gold spheres) while repulsing the blue balls outward — creating a satisfying parting effect. 8 prizes hidden in the pile (50-150 pts each), 10 attempts per round. Iterated through 4 grab systems: force-based pull, physical cage, freeze-on-contact, and finally magnetics.
+
+**Key technical details:**
+- 600 RigidBody3D balls + 8 prize bodies running on Godot 3D physics (HTML5)
+- Magnetic attraction: per-frame force toward magnet for prizes within radius, freeze + lock when close
+- Ball repulsion: per-frame force away from magnet pushes balls aside on descent
+- AnimatableBody3D magnet with cylinder collision physically pushes balls on contact
+- Pulsing blue TorusMesh glow ring when magnet is active
+- Transparent circular DROP button appears only after first drag
+- All geometry procedural (no imported assets)
+
+**Stats:** ~10 iterations · ~300k tokens
 
 ## Day 36: Third Space
 
