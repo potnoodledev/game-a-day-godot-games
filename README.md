@@ -15,6 +15,20 @@ Source code for games built with Godot Engine in the [Game-A-Day](https://github
 | 35 | Wrecking Ball | Mar 17, 2026 | Godot 4.6.1 |
 | 36 | Third Space | Mar 18, 2026 | Godot 4.6.1 |
 | 37 | Claws | Mar 19, 2026 | Godot 4.6.1 |
+| 38 | Autonomous Agents | Mar 21, 2026 | Godot 4.6.1 |
+
+## Day 38: Autonomous Agents
+
+Evolution simulator with natural selection. 20 creatures spawn with random traits (size, speed, vision, aggression, color). They autonomously seek food, flee bigger agents, hunt smaller ones, reproduce with mutations. Tap to place food and guide evolution. Population graph tracks boom-bust cycles. 2-minute rounds, score = max generation × 10 + total born. Game over shows evolved trait averages.
+
+**Key technical details:**
+- 5 mutable traits per agent with clamped ranges and per-generation drift
+- Priority-based AI: flee > hunt > forage > wander
+- Energy system: drain scales with size × speed, food restores, death drops meat
+- Emergent behavior: aggressive hunters crash when food scarce, fast foragers dominate long-term
+- Population history graph rendered in _draw()
+
+**Stats:** ~2 iterations · ~80k tokens
 
 ## Day 37: Claws
 

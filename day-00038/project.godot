@@ -1,0 +1,17 @@
+; Engine configuration file.
+
+config_version=5
+
+[application]
+run/main_scene="res://main.tscn"
+config/name="AutonomousAgents"
+config/features=PackedStringArray("4.3")
+
+[autoload]
+Api="*res://api.gd"
+
+[display]
+window/stretch/aspect="expand"
+window/stretch/mode="canvas_items"
+window/size/viewport_height=600
+window/size/viewport_width=800
